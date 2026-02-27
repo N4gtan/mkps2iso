@@ -1,0 +1,393 @@
+/*
+ * osta_udf.h
+ *
+ * This file is based on OSTA UDF(tm) 2.60 (March 1, 2005)
+ * http://www.osta.org
+ *
+ * Copyright (c) 2001-2004  Ben Fennema
+ * Copyright (c) 2017-2021  Pali Rohár <pali.rohar@gmail.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions, and the following disclaimer,
+ *    without modification.
+ * 2. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * Alternatively, this software may be distributed under the terms of the
+ * GNU Public License ("GPL").
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+/**
+ * @file
+ * OSTA-UDF defines and structure definitions
+ */
+
+#pragma once
+
+#include <cstdint>
+
+#pragma pack(push, 1)
+
+#ifndef ECMACHARS
+#define ECMACHARS
+/* Character sets and coding - d-characters (ECMA 167r3 1/7.2) */
+typedef uint8_t dchars;
+
+/* Character set specification (ECMA 167r3 1/7.2.1) */
+typedef struct
+{
+    uint8_t     charSetType;
+    uint8_t     charSetInfo[63];
+} charspec;
+
+/* Character Set Type (ECMA 167r3 1/7.2.1.1) */
+#define CHARSPEC_TYPE_CS0           0x00    /* (1/7.2.2) */
+#define CHARSPEC_TYPE_CS1           0x01    /* (1/7.2.3) */
+#define CHARSPEC_TYPE_CS2           0x02    /* (1/7.2.4) */
+#define CHARSPEC_TYPE_CS3           0x03    /* (1/7.2.5) */
+#define CHARSPEC_TYPE_CS4           0x04    /* (1/7.2.6) */
+#define CHARSPEC_TYPE_CS5           0x05    /* (1/7.2.7) */
+#define CHARSPEC_TYPE_CS6           0x06    /* (1/7.2.8) */
+#define CHARSPEC_TYPE_CS7           0x07    /* (1/7.2.9) */
+#define CHARSPEC_TYPE_CS8           0x08    /* (1/7.2.10) */
+
+/* Fixed-length character fields - d-string (EMCA 167r3 1/7.2.12) */
+typedef uint8_t dstring;
+#endif /* ECMACHARS */
+
+/* Character Sets (UDF 2.60 2.1.1) */
+#define COMPRESSION_ID_ALGORITHM_8BIT      0x08
+#define COMPRESSION_ID_ALGORITHM_16BIT     0x10
+#define COMPRESSION_ID_ALGORITHM_DEL_8BIT  0xFE
+#define COMPRESSION_ID_ALGORITHM_DEL_16BIT 0xFF
+
+/* OSTA CS0 Charspec (UDF 2.60 2.1.2) */
+#define UDF_CHAR_SET_TYPE       CHARSPEC_TYPE_CS0
+#define UDF_CHAR_SET_INFO       "OSTA Compressed Unicode"
+
+/* Entity Identifier (UDF 2.60 2.1.5) */
+/* Identifiers (UDF 2.60 2.1.5.2) */
+/* Implementation Use Extended Attribute (UDF 2.60 3.3.4.5) */
+/* Virtual Allocation Table (UDF 1.50 2.2.10) */
+/* Logical Volume Extended Information (UDF 1.50 Errata, DCN 5003, 3.3.4.5.1.3) */
+/* OS2EA (UDF 1.50 3.3.4.5.3.1) */
+/* MacUniqueIDTable (UDF 1.50 3.3.4.5.4.3) */
+/* MacResourceFork (UDF 1.50 3.3.4.5.4.4) */
+#define UDF_ID_COMPLIANT        "*OSTA UDF Compliant"
+#define UDF_ID_LV_INFO          "*UDF LV Info"
+#define UDF_ID_FREE_EA          "*UDF FreeEASpace"
+#define UDF_ID_FREE_APP_EA      "*UDF FreeAppEASpace"
+#define UDF_ID_DVD_CGMS         "*UDF DVD CGMS Info"
+#define UDF_ID_VAT_LVEXTENSION  "*UDF VAT LVExtension"
+#define UDF_ID_OS2_EA           "*UDF OS/2 EA"
+#define UDF_ID_OS2_EA_LENGTH    "*UDF OS/2 EALength"
+#define UDF_ID_MAC_VOLUME       "*UDF Mac VolumeInfo"
+#define UDF_ID_MAC_FINDER       "*UDF Mac FinderInfo"
+#define UDF_ID_MAC_UNIQUE       "*UDF Mac UniqueIDTable"
+#define UDF_ID_MAC_RESOURCE     "*UDF Mac ResourceFork"
+#define UDF_ID_OS400_DIRINFO    "*UDF OS/400 DirInfo"
+#define UDF_ID_VIRTUAL          "*UDF Virtual Partition"
+#define UDF_ID_SPARABLE         "*UDF Sparable Partition"
+#define UDF_ID_ALLOC            "*UDF Virtual Alloc Tbl"
+#define UDF_ID_SPARING          "*UDF Sparing Table"
+#define UDF_ID_METADATA         "*UDF Metadata Partition"
+
+/* Identifier Suffix (UDF 2.60 2.1.5.3) */
+#define UDF_REVISION_MINIMUM 0x0102
+#define UDF_REVISION_CURRENT 0x0260
+
+#define DOMAIN_FLAGS_HARD_WRITE_PROTECT 0x01
+#define DOMAIN_FLAGS_SOFT_WRITE_PROTECT 0x02
+
+struct domainIdentSuffix
+{
+    uint16_t    UDFRevision;
+    uint8_t     domainFlags;
+    uint8_t     reserved[5];
+};
+
+/*struct UDFIdentSuffix
+{
+    uint16_t    UDFRevision;
+    uint8_t     OSClass;
+    uint8_t     OSIdentifier;
+    uint8_t     reserved[4];
+};*/
+
+struct impIdentSuffix
+{
+    uint8_t     OSClass;
+    uint8_t     OSIdentifier;
+    uint8_t     impUse[6];
+};
+
+/*struct appIdentSuffix
+{
+    uint8_t     impUse[8];
+};*/
+
+typedef struct
+{
+    uint8_t             flags;
+    uint8_t             ident[23];
+    domainIdentSuffix   identSuffix;
+} regidDomain;
+
+typedef struct
+{
+    uint8_t             flags;
+    uint8_t             ident[23];
+    impIdentSuffix      identSuffix;
+} regidImp;
+
+/* Interchange Level (UDF 2.60 2.2.2.1) */
+#define UDF_PVD_INTERCHANGE_LVL_SINGLE_VOL 0x0002
+#define UDF_PVD_INTERCHANGE_LVL_MULTI_VOL  0x0003
+ 
+/* Logical Volume Integrity Descriptor (UDF 2.60 2.2.6) */
+/* Implementation Use (UDF 2.60 2.2.6.4) */
+struct logicalVolIntegrityDescImpUse
+{
+    regidImp    impIdent;
+    uint32_t    numFiles;
+    uint32_t    numDirs;
+    uint16_t    minUDFReadRev;
+    uint16_t    minUDFWriteRev;
+    uint16_t    maxUDFWriteRev;
+    /* uint8_t  impUse[]; */
+};
+
+/* Implementation Use Volume Descriptor (UDF 2.60 2.2.7) */
+/* Implementation Use (UDF 2.60 2.2.7.2) */
+struct impUseVolDescImpUse
+{
+    charspec    LVICharset;
+    dstring     logicalVolIdent[128];
+    dstring     LVInfo1[36];
+    dstring     LVInfo2[36];
+    dstring     LVInfo3[36];
+    regidImp    impIdent;
+    uint8_t     impUse[128];
+};
+
+/*struct udfPartitionMap2
+{
+    uint8_t     partitionMapType;
+    uint8_t     partitionMapLength;
+    uint8_t     reserved1[2];
+    regid       partIdent;
+    uint16_t    volSeqNum;
+    uint16_t    partitionNum;
+};*/
+
+/* Virtual Partition Map (UDF 2.60 2.2.8) */
+/*struct virtualPartitionMap
+{
+    uint8_t     partitionMapType;
+    uint8_t     partitionMapLength;
+    uint8_t     reserved1[2];
+    regid       partIdent;
+    uint16_t    volSeqNum;
+    uint16_t    partitionNum;
+    uint8_t     reserved2[24];
+};*/
+
+/* Sparable Partition Map (UDF 2.60 2.2.9) */
+/*struct sparablePartitionMap
+{
+    uint8_t     partitionMapType;
+    uint8_t     partitionMapLength;
+    uint8_t     reserved1[2];
+    regid       partIdent;
+    uint16_t    volSeqNum;
+    uint16_t    partitionNum;
+    uint16_t    packetLength;
+    uint8_t     numSparingTables;
+    uint8_t     reserved2[1];
+    uint32_t    sizeSparingTable;
+    uint32_t    locSparingTable[4];
+};*/
+
+/* Metadata Partition Map (UDF 2.60 2.2.10) */
+/*struct metadataPartitionMap
+{
+    uint8_t     partitionMapType;
+    uint8_t     partitionMapLength;
+    uint8_t     reserved1[2];
+    regid       partIdent;
+    uint16_t    volSeqNum;
+    uint16_t    partitionNum;
+    uint32_t    metadataFileLoc;
+    uint32_t    metadataMirrorFileLoc;
+    uint32_t    metadataBitmapFileLoc;
+    uint32_t    allocUnitSize;
+    uint16_t    alignUnitSize;
+    uint8_t     flags;
+    uint8_t     reserved2[5];
+};*/
+
+/* Virtual Allocation Table (UDF 1.5 2.2.10) */
+/*struct virtualAllocationTable15
+{
+    uint32_t    vatEntry[0];
+    regid       vatIdent;
+    uint32_t    previousVATICBLoc;
+};
+
+#define ICBTAG_FILE_TYPE_VAT15      0x00U*/
+
+/* Virtual Allocation Table (UDF 2.60 2.2.11) */
+/*struct virtualAllocationTable20
+{
+    uint16_t    lengthHeader;
+    uint16_t    lengthImpUse;
+    dstring     logicalVolIdent[128];
+    uint32_t    previousVATICBLoc;
+    uint32_t    numFiles;
+    uint32_t    numDirs;
+    uint16_t    minUDFReadRev;
+    uint16_t    minUDFWriteRev;
+    uint16_t    maxUDFWriteRev;
+    uint16_t    reserved;
+    uint8_t     impUse[];
+    uint32_t    vatEntry[];
+};
+
+#define ICBTAG_FILE_TYPE_VAT20      0xF8U*/
+
+/* Sparing Table (UDF 2.60 2.2.12) */
+/*typedef struct
+{
+    uint32_t    origLocation;
+    uint32_t    mappedLocation;
+} sparingEntry;*/
+
+/*struct sparingTable
+{
+    tag             descTag;
+    regid           sparingIdent;
+    uint16_t        reallocationTableLen;
+    uint16_t        reserved;
+    uint32_t        sequenceNum;
+    sparingEntry    mapEntry[];
+};*/
+
+/* Metadata File (and Metadata Mirror File) (UDF 2.60 2.2.13.1) */
+#define ICBTAG_FILE_TYPE_MAIN       0xFA
+#define ICBTAG_FILE_TYPE_MIRROR     0xFB
+#define ICBTAG_FILE_TYPE_BITMAP     0xFC
+
+/* struct long_ad ICB - ADImpUse (UDF 2.60 2.2.4.3) */
+/*struct allocDescImpUse
+{
+    uint16_t    flags;
+    uint8_t     impUse[4];
+};
+
+#define AD_IU_EXT_ERASED        0x0001*/
+
+/* Interchange Level (UDF 2.60 2.3.2.1) */
+#define UDF_FSD_INTERCHANGE_LVL     0x0003
+
+/* Strategy Type (UDF 2.60 6.6) */
+#define ICBTAG_STRATEGY_TYPE_4096   4096
+
+/* Real-Time Files (UDF 2.60 6.11) */
+#define ICBTAG_FILE_TYPE_REALTIME   0xF9U
+
+/* Implementation Use Extended Attribute (UDF 2.60 3.3.4.5) */
+/* FreeEASpace (UDF 2.60 3.3.4.5.1.1) */
+struct freeEaSpace
+{
+    uint16_t    headerChecksum;
+    uint8_t     freeEASpace[2]; // We use a size of 2 as "align" bytes
+};
+
+/* DVD Copyright Management Information (UDF 2.60 3.3.4.5.1.2) */
+struct DVDCopyrightImpUse 
+{
+    uint16_t    headerChecksum;
+    uint8_t     CGMSInfo;
+    uint8_t     dataType;
+    uint8_t     protectionSystemInfo[4];
+};
+
+/* Logical Volume Extended Information (UDF 1.50 Errata, DCN 5003, 3.3.4.5.1.3) */
+/*struct LVExtensionEA
+{
+    uint16_t    headerChecksum;
+    uint64_t    verificationID;
+    uint32_t    numFiles;
+    uint32_t    numDirs;
+    dstring     logicalVolIdent[128];
+};*/
+
+/* Application Use Extended Attribute (UDF 2.60 3.3.4.6) */
+/* FreeAppEASpace (UDF 2.60 3.3.4.6.1) */
+/*struct freeAppEASpace
+{
+    uint16_t    headerChecksum;
+    uint8_t     freeEASpace[];
+};*/
+
+/* UDF Defined System Stream (UDF 2.60 3.3.7) */
+/*#define UDF_ID_UNIQUE_ID                  "*UDF Unique ID Mapping Data"
+#define UDF_ID_NON_ALLOC                    "*UDF Non-Allocatable Space"
+#define UDF_ID_POWER_CAL                    "*UDF Power Cal Table"
+#define UDF_ID_BACKUP                       "*UDF Backup"*/
+
+/* UDF Defined Non-System Streams (UDF 2.60 3.3.8) */
+/*#define UDF_ID_MAC_RESOURCE_FORK_STREAM   "*UDF Macintosh Resource Fork"
+#define UDF_ID_OS2_EA                       "*UDF OS/2 EA"
+#define UDF_ID_NT_ACL                       "*UDF NT ACL"
+#define UDF_ID_UNIX_ACL                     "*UDF UNIX ACL"*/
+
+/* Operating System Identifiers (UDF 2.60 6.3) */
+#define UDF_OS_CLASS_UNDEF      0x00U
+#define UDF_OS_CLASS_DOS        0x01U
+#define UDF_OS_CLASS_OS2        0x02U
+#define UDF_OS_CLASS_MAC        0x03U
+#define UDF_OS_CLASS_UNIX       0x04U
+#define UDF_OS_CLASS_WIN9X      0x05U
+#define UDF_OS_CLASS_WINNT      0x06U
+#define UDF_OS_CLASS_OS400      0x07U
+#define UDF_OS_CLASS_BEOS       0x08U
+#define UDF_OS_CLASS_WINCE      0x09U
+
+#define UDF_OS_ID_UNDEF         0x00U
+#define UDF_OS_ID_DOS           0x00U
+#define UDF_OS_ID_OS2           0x00U
+#define UDF_OS_ID_MAC           0x00U
+#define UDF_OS_ID_MAX_OSX       0x01U
+#define UDF_OS_ID_UNIX          0x00U
+#define UDF_OS_ID_AIX           0x01U
+#define UDF_OS_ID_SOLARIS       0x02U
+#define UDF_OS_ID_HPUX          0x03U
+#define UDF_OS_ID_IRIX          0x04U
+#define UDF_OS_ID_LINUX         0x05U
+#define UDF_OS_ID_MKLINUX       0x06U
+#define UDF_OS_ID_FREEBSD       0x07U
+#define UDF_OS_ID_NETBSD        0x08U
+#define UDF_OS_ID_WIN9X         0x00U
+#define UDF_OS_ID_WINNT         0x00U
+#define UDF_OS_ID_OS400         0x00U
+#define UDF_OS_ID_BEOS          0x00U
+#define UDF_OS_ID_WINCE         0x00U
+
+#pragma pack(pop)

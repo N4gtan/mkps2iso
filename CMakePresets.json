@@ -1,0 +1,73 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 28,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name":        "debug",
+            "displayName": "Debug Config",
+            "description": "Use this preset to debug mkps2iso.",
+            "binaryDir":   "${sourceDir}/build",
+            "warnings": {
+                "uninitialized": true,
+                "unusedCli": false
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
+            }
+        },
+        {
+            "name":        "release",
+            "displayName": "Release Config",
+            "description": "Use this preset to build mkps2iso.",
+            "binaryDir":   "${sourceDir}/build",
+            "warnings": {
+                "uninitialized": true,
+                "unusedCli": false
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name":            "release",
+            "configurePreset": "release",
+            "configuration":   "Release"
+        }
+    ],
+    "packagePresets": [
+        {
+            "name":            "release",
+            "configurePreset": "release"
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name":        "ci",
+            "displayName": "CI build",
+            "description": "This preset is used by GitHub Actions to build mkps2iso.",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "release"
+                },
+                {
+                    "type": "build",
+                    "name": "release"
+                },
+                {
+                    "type": "package",
+                    "name": "release"
+                }
+            ]
+        }
+    ]
+}

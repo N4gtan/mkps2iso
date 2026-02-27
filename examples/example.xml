@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- MKPS2ISO example XML script -->
+
+<!-- <iso_project>
+    Starts an image project to build. Multiple <iso_project> elements may be
+    specified within the same xml script useful for multi-disc game projects.
+    
+    Attributes:
+        image_name  - File name of the UDF image file to generate.
+-->
+<iso_project image_name="myimage.iso">
+
+    <!-- <identifiers>
+        Optional, Specifies the identifier strings.
+        
+        In order for the resulting image to be bootable to a PS2, the system and application identifiers must
+        read PLAYSTATION. If for some reason you wanted to keep them blank, specify a blank system and
+        application identifier.
+
+        Attributes:
+            system          - Optional, specifies the system identifier (if blank, defaults to PLAYSTATION).
+            application     - Optional, specifies the application identifier (if blank, defaults to PLAYSTATION).
+            volume          - Optional, specifies the volume identifier.
+            volume_set      - Optional, specifies the volume set identifier.
+            publisher       - Optional, specifies the publisher identifier.
+            data_preparer   - Optional, specifies the data preparer identifier.
+            copyright       - Optional, specifies the copyright descriptor.
+    -->
+    <identifiers
+        system          ="PLAYSTATION"
+        application     ="PLAYSTATION"
+        volume          ="MYDISC"
+        volume_set      ="MYDISC"
+        publisher       ="ME"
+        data_preparer   ="MKPS2ISO"
+        copyright       ="COPYLEFT"
+    />
+
+    <!-- <license>
+        Optional, specifies the license file to use. The file format of the license file must be in
+        2048 byte sector format.
+
+        License data is not included within the MKPS2ISO program to avoid possible legal problems
+        in the open source environment... Better be safe than sorry.
+
+        Attributes:
+            file    - Specifies the license file to inject into the ISO image.
+    -->
+    <license file="licensea.dat"/>
+
+    <!-- <directory_tree>
+        Specifies and contains the directory structure.
+
+        Attributes:
+            source  - Specifies the directory path to the source files (can be a relative or absolute path).
+    -->
+    <directory_tree source="myproject">
+
+        <!-- <file>
+            Specifies a file in the directory tree.
+
+            Attributes:
+                name    - Name for the file (max 31 characters including extension).
+                source  - Optional, path to the source file (can be a relative or absolute).
+                date    - Optional, custom file timestamp. Format is YYYYMMDDHHMMSS.
+                offs    - Optional, custom forced LBA for files.
+                hidden  - Optional, flag to set entries as "hidden". Options are
+                            '0': not hidden. (Default)
+                            '1': hidden.
+                            '2': obfuscated. (Doesn't add the entry to the Directory Record)
+                            '3': obfuscated and hidden. (Only for directories, sets hidden flag and obfuscates parent entry)
+
+            Note: Either name or source attribute can be omitted. If only name is specified, it uses
+            that as the name of the source file, and specifying only source strips off the path name
+            and uses that as the name of the file. Omitting both will cause an error obviously.
+        -->
+        <!-- Stores system.txt as system.cnf -->
+        <file name="system.cnf" source="../system.txt"/>
+
+        <!-- File path is inferred from <directory_tree> source -->
+        <file name="myexec.elf"/>
+
+        <!-- <dir>
+            Specifies a subdirectory to the directory structure. <file> and <dir> elements inside
+            the element will be stored inside it.
+
+            Attributes:
+                name    - Name for the directory (max 31 characters).
+                source  - Optional, path to the source directory (can be a relative or absolute).
+                date    - Optional, custom file timestamp. Format is YYYYMMDDHHMMSS.
+                offs    - Optional, custom forced LBA for directories.
+                hidden  - Optional, flag to set entries as "hidden" (see above for description).
+        -->
+        <!-- Dir path is inferred from <directory_tree> source -->
+        <dir name="mydir">
+
+            <!-- All <file> and <dir> elements here will be inside mydir -->
+
+            <!-- File path is inferred from mydir source -->
+            <file name="myfile.dat"/>
+
+        </dir>
+
+        <!-- <dummy>
+            Specifies an invisible dummy file to be generated into the file system. Use this to
+            add dummy sectors, usually at the end of the file system portion of the image to avoid
+            the possibility of 'drive runaway' which can damage a drive mechanism.
+
+            The dummy file is completely invisible as it is not added into the directory records
+            of the ISO image entirely which ensures a clean directory structure when the file system is
+            viewed on a file browser.
+
+            Attributes:
+                sectors - Size of dummy file in sector units (10240 = 20MiB).
+                offs    - Optional, custom forced LBA for dummies.
+        -->
+        <dummy sectors="10240"/>
+
+    </directory_tree>
+
+</iso_project>

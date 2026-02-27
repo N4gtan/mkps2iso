@@ -1,0 +1,13 @@
+# Ignore all
+/*
+
+# Exceptions
+!.github/
+!examples/
+!src/
+!.gitignore
+!.gitmodules
+!CMakeLists.txt
+!CMakePresets.json
+!LICENSE
+!README.md

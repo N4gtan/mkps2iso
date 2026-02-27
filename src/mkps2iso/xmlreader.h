@@ -1,0 +1,29 @@
+#pragma once
+
+#include "xml.h"
+#include "isobuilder.h"
+
+namespace xml
+{
+    class Reader
+    {
+        tinyxml2::XMLDocument m_xmlDoc;
+        tinyxml2::XMLDocument m_xmlIdFile;
+        tinyxml2::XMLElement *m_projectElement = nullptr;
+
+        static bool Open(const fs::path &fileName, tinyxml2::XMLDocument &doc);
+
+    public:
+        Reader();
+
+        // Parses the elements before <directory_tree> element.
+        // Returns self.
+        xml::Reader *ReadHeaders(iso::IDENTIFIERS &isoIdentifiers);
+
+        // Parses <directory_tree> element.
+        // Returns the generated DirTree.
+        iso::DirTree *ReadDirTree(std::list<Entry> &entries, const char *&volDate);
+
+        tinyxml2::XMLElement *NextProjectElement();
+    };
+}
