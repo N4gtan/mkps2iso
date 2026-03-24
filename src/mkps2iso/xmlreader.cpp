@@ -218,15 +218,6 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries, const char *&v
 
 xml::Reader *xml::Reader::ReadHeaders(iso::IDENTIFIERS &isoIdentifiers)
 {
-    // Check if image_name attribute is specified
-    if (param::isoFile.empty())
-    {
-        if (const char *image_name = m_projectElement->Attribute(xml::attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
-            param::isoFile = image_name;
-        else
-            (param::isoFile = param::xmlFile.stem()) += ".iso"; // Use file name of XML project as the image file name
-    }
-
     // Set file system identifiers
     if (const tinyxml2::XMLElement *identifierElement = m_projectElement->FirstChildElement(elem::IDENTIFIERS))
     {
@@ -319,12 +310,35 @@ tinyxml2::XMLElement *xml::Reader::NextProjectElement()
         // First call: Check if there is an <iso_project> element
         m_projectElement = m_xmlDoc.FirstChildElement(xml::elem::ISO_PROJECT);
         if (m_projectElement == nullptr)
+        {
             printf("ERROR: Cannot find <iso_project> element in XML document.\n");
+        }
+        else if (param::isoFile.empty())
+        {
+            // Check if image_name attribute is specified
+            if (const char *image_name = m_projectElement->Attribute(xml::attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
+                param::isoFile = image_name;
+            else
+               (param::isoFile = param::xmlFile.stem()) += ".iso"; // Use file name of XML project as the image file name
+        }
     }
     else
     {
         // Subsequent calls: get the next sibling
         m_projectElement = m_projectElement->NextSiblingElement(xml::elem::ISO_PROJECT);
+        if (m_projectElement != nullptr)
+        {
+            // Check if image_name attribute is specified
+            if (const char *image_name = m_projectElement->Attribute(xml::attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
+            {
+                param::isoFile = image_name;
+            }
+            else
+            {
+                printf("ERROR: <iso_project> attribute \"image_name\" is missing or blank on line %d.\n", m_projectElement->GetLineNum());
+                m_projectElement = nullptr;
+            }
+        }
     }
 
     return m_projectElement;
