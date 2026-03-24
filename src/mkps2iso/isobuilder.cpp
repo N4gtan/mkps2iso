@@ -59,12 +59,12 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const int level, const char *na
 
     fprintf(fp, "/* %s */\n", name);
 
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type != EntryType::EntryFile)
+        if (it->type != EntryType::EntryFile)
             continue;
 
-        std::string temp_name = "LBA_" + entry.identifier;
+        std::string temp_name = "LBA_" + it->identifier;
 
         for (char &ch : temp_name)
         {
@@ -78,15 +78,15 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const int level, const char *na
             }
         }
 
-        fprintf(fp, "#define %-17s %u\n", temp_name.c_str(), entry.lba);
+        fprintf(fp, "#define %-17s %u\n", temp_name.c_str(), it->lba);
     }
 
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type == EntryType::EntryDir)
+        if (it->type == EntryType::EntryDir)
         {
             fprintf(fp, "\n");
-            entry.subdir->OutputHeaderListing(fp, level + 1, m_entry->identifier.c_str());
+            it->subdir->OutputHeaderListing(fp, level + 1, it->identifier.c_str());
         }
     }
 }
@@ -113,39 +113,39 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
     uint32_t maxlba = 0;
     if (level == 0)
     {
-        for (const Entry &entry : GetView())
+        for (const auto it : GetView())
         {
-            if (entry.type != EntryType::EntryDummy)
-                maxlba = std::max(entry.lba, maxlba);
+            if (it->type != EntryType::EntryDummy)
+                maxlba = std::max(it->lba, maxlba);
         }
     }
 
     // Print first the files in the directory
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
         // Skip directories and postgap dummy
-        if (entry.type == EntryType::EntryDir || (entry.type == EntryType::EntryDummy && level == 0 && entry.lba > maxlba))
+        if (it->type == EntryType::EntryDir || (it->type == EntryType::EntryDummy && level == 0 && it->lba > maxlba))
             continue;
 
-        const char *typeStr = entry.type == EntryType::EntryFile ? " File" : "Dummy";
-        std::string nameStr = entry.type == EntryType::EntryFile ? entry.identifier : "<DUMMY>";
-        uint32_t sectors = GetSizeInSectors(entry.size);
+        const char *typeStr = it->type == EntryType::EntryFile ? " File" : "Dummy";
+        std::string nameStr = it->type == EntryType::EntryFile ? it->identifier : "<DUMMY>";
+        uint32_t sectors = GetSizeInSectors(it->size);
 
         // Print the entry details
-        printEntryDetails(typeStr, nameStr.c_str(), std::to_string(sectors).c_str(), entry);
+        printEntryDetails(typeStr, nameStr.c_str(), std::to_string(sectors).c_str(), *it);
     }
 
     // Print directories and postgap dummy
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type == EntryType::EntryDir)
+        if (it->type == EntryType::EntryDir)
         {
-            printEntryDetails(" Dir", entry.identifier.c_str(), "", entry);
-            entry.subdir->OutputLBAlisting(fp, level + 1);
+            printEntryDetails(" Dir", it->identifier.c_str(), "", *it);
+            it->subdir->OutputLBAlisting(fp, level + 1);
         }
-        else if (entry.type == EntryType::EntryDummy && level == 0 && entry.lba > maxlba)
+        else if (it->type == EntryType::EntryDummy && level == 0 && it->lba > maxlba)
         {
-            printEntryDetails("Dummy", "<DUMMY>", std::to_string(GetSizeInSectors(entry.size)).c_str(), entry);
+            printEntryDetails("Dummy", "<DUMMY>", std::to_string(GetSizeInSectors(it->size)).c_str(), *it);
         }
     }
 
@@ -198,11 +198,11 @@ bool iso::DirTree::AddFileEntry(std::string id, fs::path srcFile, const EntryAtt
     }
 
     // Check if file entry already exists
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (!entry.identifier.empty())
+        if (!it->identifier.empty())
         {
-            if ((entry.type != EntryType::EntryDir) && (CompareICase(entry.identifier, id)))
+            if ((it->type != EntryType::EntryDir) && (CompareICase(it->identifier, id)))
             {
                 printf("ERROR: Duplicate file entry: %s\n", id.c_str());
                 return false;
@@ -241,10 +241,10 @@ void iso::DirTree::AddDummyEntry(const uint32_t sectors, const uint32_t lbaFRC)
 iso::DirTree *iso::DirTree::AddSubDirEntry(std::string id, const fs::path &srcDir, const EntryAttributes &attributes, const char *date)
 {
     // Duplicate directory entries are allowed, but the subsequent occurences will not add a new directory to 'entries'.
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if ((entry.type == EntryType::EntryDir) && (entry.identifier == id))
-            return entry.subdir.get();
+        if ((it->type == EntryType::EntryDir) && (it->identifier == id))
+            return it->subdir.get();
     }
 
     auto fileAttrib = Stat(srcDir);
@@ -273,10 +273,10 @@ uint32_t iso::DirTree::CalculatePathTableLen(const Entry &dirEntry) const
 {
     // Put identifier (empty if first entry)
     uint32_t len = sizeof(ISO_PATHTABLE_ENTRY) + AlignTo<2>(MinimumOne(dirEntry.identifier.length()));
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type == EntryType::EntryDir)
-            len += entry.subdir->CalculatePathTableLen(entry);
+        if (it->type == EntryType::EntryDir)
+            len += it->subdir->CalculatePathTableLen(*it);
     }
 
     return len;
@@ -286,15 +286,15 @@ uint32_t iso::DirTree::CalculateFileIdDescLen() const
 {
     uint32_t dirEntryLen = AlignTo<4>(sizeof(fileIdentDesc));
 
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type == EntryType::EntryDummy || entry.hf > 1)
+        if (it->type == EntryType::EntryDummy || it->hf > 1)
             continue;
 
         uint32_t dataLen = sizeof(fileIdentDesc);
 
         dataLen++; // Compression ID
-        dataLen += entry.identifier.length() * 2; // UTF-16
+        dataLen += it->identifier.length() * 2; // UTF-16
         dataLen = AlignTo<4>(dataLen);
 
         // Round dirEntryLen to the nearest multiple of 2048 as the rest of that sector is "unusable"
@@ -312,14 +312,14 @@ uint32_t iso::DirTree::CalculateDirRecordLen() const
 {
     uint32_t dirEntryLen = (AlignTo<2>(sizeof(ISO_DIR_ENTRY)) * 2) + (sizeof(ISO_XA_ATTRIB) * 2);
 
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type == EntryType::EntryDummy || entry.hf > 1)
+        if (it->type == EntryType::EntryDummy || it->hf > 1)
             continue;
 
         uint32_t dataLen = sizeof(ISO_DIR_ENTRY);
 
-        dataLen += entry.identifier.length() + (entry.type == EntryType::EntryFile ? sizeof(";1") - 1 : 0);
+        dataLen += it->identifier.length() + (it->type == EntryType::EntryFile ? sizeof(";1") - 1 : 0);
         dataLen = AlignTo<2>(dataLen);
         dataLen += sizeof(ISO_XA_ATTRIB);
 
@@ -417,17 +417,15 @@ void iso::DirTree::PartitionEntries()
         auto *currentTree = dirsQueue.front();
         dirsQueue.pop();
 
-        for (const Entry &entry : currentTree->GetView())
+        for (const auto it : currentTree->GetView())
         {
-            if (entry.type == EntryType::EntryDir)
+            if (it->type == EntryType::EntryDir)
             {
-                // Find and extract only directories into our temporary list
-                auto it = std::ranges::find_if(entries, [&](const auto &e) { return &e == &entry; });
-                if (it != entries.end())
-                    dirsByLevel.splice(dirsByLevel.end(), entries, it);
+                // Extract only directories into our temporary list
+                dirsByLevel.splice(dirsByLevel.end(), entries, it);
 
                 // Queue subdirectory for the next level
-                dirsQueue.push(entry.subdir.get());
+                dirsQueue.push(it->subdir.get());
             }
         }
     }
@@ -439,22 +437,22 @@ void iso::DirTree::PartitionEntries()
 void iso::DirTree::SortDirectoryEntries(const bool byLBA)
 {
     // Search for directories
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
         // Perform recursive call
-        if (entry.type == EntryType::EntryDir)
-            entry.subdir->SortDirectoryEntries(byLBA);
+        if (it->type == EntryType::EntryDir)
+            it->subdir->SortDirectoryEntries(byLBA);
     }
 
     if (byLBA)
     {
-        std::sort(GetView().begin(), GetView().end(), [](const auto &left, const auto &right)
-                  { return left.get().lba < right.get().lba; });
+        SortView([](const auto &left, const auto &right)
+                 { return left->lba < right->lba; });
     }
     else
     {
-        std::stable_sort(GetView().begin(), GetView().end(), [](const auto &left, const auto &right)
-                         { return left.get().order < right.get().order; });
+        SortView([](const auto &left, const auto &right)
+                 { return left->order < right->order; });
     }
 }
 
@@ -462,16 +460,16 @@ template <bool recursive>
 uint32_t iso::DirTree::GetFileCount() const
 {
     int numfiles = 0;
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type != EntryType::EntryDir)
+        if (it->type != EntryType::EntryDir)
         {
-            if (entry.type != EntryType::EntryDummy)
+            if (it->type != EntryType::EntryDummy)
                 numfiles++;
         }
         else if constexpr (recursive)
         {
-            numfiles += entry.subdir->GetFileCount();
+            numfiles += it->subdir->GetFileCount();
         }
     }
 
@@ -482,13 +480,13 @@ template <bool recursive>
 uint32_t iso::DirTree::GetDirCount() const
 {
     int numdirs = 0;
-    for (const Entry &entry : GetView())
+    for (const auto it : GetView())
     {
-        if (entry.type == EntryType::EntryDir)
+        if (it->type == EntryType::EntryDir)
         {
             numdirs++;
             if constexpr (recursive)
-                numdirs += entry.subdir->GetDirCount();
+                numdirs += it->subdir->GetDirCount();
         }
     }
 
@@ -690,19 +688,19 @@ iso::PathTable iso::DirTree::GeneratePathTable() const
         const auto [currentDir, parentIndex] = dirsToProcess.front();
         dirsToProcess.pop();
 
-        for (const Entry &entry : currentDir->GetView())
+        for (const auto it : currentDir->GetView())
         {
-            if (entry.type == EntryType::EntryDir)
+            if (it->type == EntryType::EntryDir)
             {
                 pathTable.entries.push_back({.data = {
-                    .identifierLen  = static_cast<uint8_t>(MinimumOne(entry.identifier.length())),
-                    .dirOffs        = entry.lbaISO,
+                    .identifierLen  = static_cast<uint8_t>(MinimumOne(it->identifier.length())),
+                    .dirOffs        = it->lbaISO,
                     .parentDirIndex = parentIndex},
-                    .identifier     = ToIsoDchars(entry.identifier)
+                    .identifier     = ToIsoDchars(it->identifier)
                 });
 
                 // Queue subdirectories
-                dirsToProcess.emplace(entry.subdir.get(), index++);
+                dirsToProcess.emplace(it->subdir.get(), index++);
             }
         }
     }
@@ -804,10 +802,10 @@ void iso::DirTree::WriteDirectoryRecords() const
         writeOneEntry(sectorView.get(), *dir->m_entry, false);
         writeOneEntry(sectorView.get(), *parentDir, true);
 
-        for (const Entry& dirEntry : dir->GetView())
+        for (const auto it : dir->GetView())
         {
-            if (dirEntry.type != EntryType::EntryDummy && dirEntry.hf < 2)
-                writeOneEntry(sectorView.get(), dirEntry);
+            if (it->type != EntryType::EntryDummy && it->hf < 2)
+                writeOneEntry(sectorView.get(), *it);
         }
     };
 
@@ -1215,10 +1213,10 @@ void iso::DirTree::WriteFileIdDescriptors(const uint32_t partitionStartLBA)
         auto sectorView = dvd::writer->GetSectorView(entry.lba, GetSizeInSectors(entry.size));
         writeOneEntry(sectorView.get(), entry, entry.lba, true);
 
-        for (const Entry &dirEntry : entry.subdir->GetView())
+        for (const auto it : entry.subdir->GetView())
         {
-            if (dirEntry.type != EntryType::EntryDummy && dirEntry.hf < 2)
-                writeOneEntry(sectorView.get(), dirEntry, entry.lba, false);
+            if (it->type != EntryType::EntryDummy && it->hf < 2)
+                writeOneEntry(sectorView.get(), *it, entry.lba, false);
         }
     }
 }

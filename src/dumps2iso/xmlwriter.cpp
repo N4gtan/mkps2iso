@@ -299,14 +299,14 @@ static void WriteXMLByLBA(const std::list<Entry> &entries, tinyxml2::XMLElement 
 
 static void WriteXMLByDirectories(const iso::DirTree *directory, tinyxml2::XMLElement *dirElement, uint32_t &expectedLBA)
 {
-    for (const Entry &entry : directory->GetView())
+    for (const auto it : directory->GetView())
     {
         // Update the LBA to the max encountered value
-        expectedLBA = std::max(expectedLBA, entry.lba + GetSizeInSectors(entry.size));
+        expectedLBA = std::max(expectedLBA, it->lba + GetSizeInSectors(it->size));
 
-        tinyxml2::XMLElement *child = WriteXMLEntry(entry, dirElement);
+        tinyxml2::XMLElement *child = WriteXMLEntry(*it, dirElement);
         // Recursively write children if there are any
-        if (const iso::DirTree *subdir = entry.subdir.get(); subdir != nullptr)
+        if (const iso::DirTree *subdir = it->subdir.get(); subdir != nullptr)
             WriteXMLByDirectories(subdir, child, expectedLBA);
     }
 }

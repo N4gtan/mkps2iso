@@ -13,7 +13,7 @@ template <typename T>
 class ListView
 {
 public:
-    using type = T;
+    using iterator = typename std::list<T>::iterator;
 
     explicit ListView(std::list<T> &list)
         : m_list(list)
@@ -29,15 +29,15 @@ public:
     template <typename... Args>
     auto &EmplaceBack(Args &&...args)
     {
-        auto &ref = m_list.emplace_back(std::forward<Args>(args)...);
-        m_view.emplace_back(ref);
-        return ref;
+        auto it = m_list.emplace(m_list.end(), std::forward<Args>(args)...);
+        m_view.push_back(it);
+        return *it;
     }
 
     template <typename Compare>
     void SortView(Compare &&comp)
     {
-        std::sort(m_view.begin(), m_view.end(), std::forward<Compare>(comp));
+        std::stable_sort(m_view.begin(), m_view.end(), std::forward<Compare>(comp));
     }
 
     void ClearView()
@@ -59,14 +59,14 @@ public:
     }
 
     // Access to the view.
-    std::vector<std::reference_wrapper<type>> &GetView() { return m_view; }
-    const std::vector<std::reference_wrapper<type>> &GetView() const { return m_view; }
+    std::vector<iterator> &GetView() { return m_view; }
+    const std::vector<iterator> &GetView() const { return m_view; }
 
     // Access to the entire list. Use sparingly.
     std::list<T> &GetUnderlyingList() { return m_list; }
     const std::list<T> &GetUnderlyingList() const { return m_list; }
 
 protected:
-    std::vector<std::reference_wrapper<type>> m_view;
+    std::vector<iterator> m_view;
     std::list<T> &m_list;
 };

@@ -118,13 +118,13 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
 static void CreateDirs(Entry &dirEntry, size_t &numDirs)
 {
     size_t subDirCount = 0;
-    for (Entry &entry : dirEntry.subdir->GetView())
+    for (auto it : dirEntry.subdir->GetView())
     {
-        if (entry.type != EntryType::EntryDir)
+        if (it->type != EntryType::EntryDir)
             continue;
 
         std::error_code ec;
-        const fs::path dirPath = param::outPath / entry.path / entry.identifier;
+        const fs::path dirPath = param::outPath / it->path / it->identifier;
         fs::create_directories(dirPath, ec);
         if (ec)
         {
@@ -133,7 +133,7 @@ static void CreateDirs(Entry &dirEntry, size_t &numDirs)
         }
 
         subDirCount++;
-        CreateDirs(entry, ++numDirs);
+        CreateDirs(*it, ++numDirs);
     }
     if (dirEntry.flc == subDirCount+1)
         dirEntry.flc = 0; // reset FLC if it's not bugged

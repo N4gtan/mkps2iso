@@ -172,7 +172,7 @@ read_sector:
 
     // Sort the directory by LBA for pretty printing
     SortView([](const auto &left, const auto &right)
-             { return left.get().lba < right.get().lba; });
+             { return left->lba < right->lba; });
 }
 
 std::optional<Entry> iso::DirTree::ReadEntryISO()
@@ -312,30 +312,30 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
     dirEntries->ReadDirEntries<false>(pathTableList[parentIndex].data.dirOffs, dirRecordSectors);
 
     // Only add missing directories to the list
-    for (auto it = std::next(pathTableList.begin()); it != pathTableList.end(); ++it)
+    for (auto ptIt = std::next(pathTableList.begin()); ptIt != pathTableList.end(); ++ptIt)
     {
-        if (it->data.parentDirIndex-1 == parentIndex &&
-            !std::any_of(dirEntries->GetView().begin(), dirEntries->GetView().end(), [&it](const Entry &entry)
-                         { return entry.identifier == it->identifier; }))
+        if (ptIt->data.parentDirIndex-1u == parentIndex &&
+            !std::any_of(dirEntries->GetView().begin(), dirEntries->GetView().end(), [&ptIt](const auto dirIt)
+                         { return dirIt->identifier == ptIt->identifier; }))
         {
-            dirEntries->EmplaceBack(dirEntries->ReadRootDir<false>(it->data.dirOffs).value()).hf |= 0x02; // simulate obfuscation
+            dirEntries->EmplaceBack(std::move(dirEntries->ReadRootDir<false>(ptIt->data.dirOffs).value())).hf |= 0x02; // simulate obfuscation
         }
     }
 
-    for (Entry &entry : dirEntries->GetView())
+    for (const auto it : dirEntries->GetView())
     {
-        entry.path = path;
+        it->path = path;
 
-        if (entry.type == EntryType::EntryDir)
+        if (it->type == EntryType::EntryDir)
         {
             int childIndex = -1;
             for (size_t i = 1; i < pathTableList.size(); ++i)
             {
                 const auto &ptEntry = pathTableList[i];
-                if (ptEntry.data.dirOffs == entry.lba)
+                if (ptEntry.data.dirOffs == it->lba)
                 {
                     childIndex = i;
-                    entry.identifier = ptEntry.identifier;
+                    it->identifier = ptEntry.identifier;
                     break;
                 }
             }
@@ -343,7 +343,7 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
             if (childIndex < 0)
                 continue;
 
-            entry.subdir = ParsePathTable(dirEntries->NewView(), pathTableList, childIndex, path / entry.identifier);
+            it->subdir = ParsePathTable(dirEntries->NewView(), pathTableList, childIndex, path / it->identifier);
         }
     }
 
@@ -356,11 +356,11 @@ static std::unique_ptr<iso::DirTree> ParseSubDirectory(ListView<Entry> view, con
     auto dirEntries = std::make_unique<iso::DirTree>(std::move(view));
     dirEntries->ReadDirEntries<udf>(lba, size);
 
-    for (Entry &entry : dirEntries->GetView())
+    for (const auto it : dirEntries->GetView())
     {
-        entry.path = path;
-        if (entry.type == EntryType::EntryDir)
-            entry.subdir = ParseSubDirectory<udf>(dirEntries->NewView(), entry.lba, entry.size, path / entry.identifier);
+        it->path = path;
+        if (it->type == EntryType::EntryDir)
+            it->subdir = ParseSubDirectory<udf>(dirEntries->NewView(), it->lba, it->size, path / it->identifier);
     }
 
     return dirEntries;
