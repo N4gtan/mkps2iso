@@ -398,10 +398,10 @@ int Main(int argc, char *argv[])
     if (!param::quietMode)
         printf(VERSION_TEXT);
 
-    if (param::lbaFile == "-lba")
+    if (param::lbaFile == "-l" || param::lbaFile == "--lba")
         param::lbaFile = param::xmlFile.stem() += "_LBA.txt";
 
-    if (param::lbaHeadFile == "-lbahead")
+    if (param::lbaHeadFile == "-lh" || param::lbaHeadFile == "--lbahead")
         param::lbaHeadFile = param::xmlFile.stem() += "_LBA.h";
 
     // Initialize xml reader
