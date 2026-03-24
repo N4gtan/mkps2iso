@@ -143,8 +143,7 @@ void iso::DirTree::ReadDirEntries(int lba, const size_t size)
     constexpr int entrySkip = udf ? 1 : 2;
     const size_t endPos     = DVD_SECTOR_SIZE * static_cast<size_t>(lba) + size;
 
-read_sector:
-    dvd::reader->SeekToSector(lba++);
+    dvd::reader->SeekToSector(lba);
     while (dvd::reader->GetPos() < endPos)
     {
         auto entry = [&]() -> std::optional<Entry> {
@@ -158,9 +157,14 @@ read_sector:
         if (!entry) [[unlikely]]
         {
             if constexpr (udf)
+            {
                 break;
+            }
             else
-                goto read_sector;
+            {
+                dvd::reader->SeekToSector(++lba);
+                continue;
+            }
         }
 
         if (entryCount++ < entrySkip) [[unlikely]]
