@@ -167,22 +167,18 @@ static bool BuildISO(xml::Reader &xml)
 
     if (!param::overwrite && !param::noWarns && GetSize(param::isoFile) >= 0)
     {
-        printf("WARNING: ISO image already exists, overwrite? <y/n> ");
-        char key;
-        do {
-            key = getchar();
-            if (std::tolower(key) == 'n')
-                return EXIT_FAILURE;
-        } while (tolower(key) != 'y');
-    }
-    if (!param::quietMode)
+        printf("WARNING: ISO image already exists, overwrite? <Y/n> ");
+        uint8_t key = getchar();
+        if (std::tolower(key) == 'n')
+            return false;
         printf("\n");
+    }
 
     // Create ISO image for writing
     if (!dvd::writer->Create(param::isoFile, totalLenLBA))
     {
         printf("ERROR: Cannot open or create output image file.\n");
-        return EXIT_FAILURE;
+        return false;
     }
 
     // Write files
