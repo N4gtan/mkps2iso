@@ -107,6 +107,7 @@ namespace iso
         void WriteFileSetDescriptors(const uint32_t partitionStartLBA, const IDENTIFIERS &id) const;
         void WriteFileIdDescriptors(const uint32_t partitionStartLBA);
 
+        void SaveDirEntriesOrder();
         void SortDirectoryEntries(const bool byLBA = false);
         void PartitionEntries();
 

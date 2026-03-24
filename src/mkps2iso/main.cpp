@@ -137,6 +137,7 @@ static bool BuildISO(xml::Reader &xml)
     // Sort entries
     dirTree->PartitionEntries();
     dirTree->SortDirectoryEntries();
+    dirTree->SaveDirEntriesOrder();
 
     // Calculate tree LBAs
     const uint32_t pathTableLen      = dirTree->CalculatePathTableLen(entries.front());

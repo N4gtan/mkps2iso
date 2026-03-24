@@ -426,6 +426,17 @@ void iso::DirTree::PartitionEntries()
     entries.splice(std::next(entries.begin()), dirsByLevel);
 }
 
+void iso::DirTree::SaveDirEntriesOrder()
+{
+    int index = 0;
+    for (const auto it : GetView())
+    {
+        it->order = index++;
+        if (it->type == EntryType::EntryDir)
+            it->subdir->SaveDirEntriesOrder();
+    }
+}
+
 void iso::DirTree::SortDirectoryEntries(const bool byLBA)
 {
     // Search for directories
