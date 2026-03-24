@@ -27,9 +27,6 @@ jobs:
   build-linux:
     name:    Build mkps2iso on Linux
     runs-on: ubuntu-22.04
-    env:
-      CC:  "clang"
-      CXX: "clang++"
 
     steps:
     - name: Fetch repo contents
