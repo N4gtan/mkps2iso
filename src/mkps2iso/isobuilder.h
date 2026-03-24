@@ -36,7 +36,7 @@ namespace iso
         explicit DirTree(ListView<Entry> view, Entry *entry = nullptr, DirTree *parent = nullptr);
 
         void OutputLBAlisting(FILE *fp, const int level) const;
-        void OutputHeaderListing(FILE *fp, const int level, const char *name) const;
+        void OutputHeaderListing(FILE *fp, const char *name) const;
 
         static Entry &CreateRootDirectory(std::list<Entry> &entries, const ISO_DATESTAMP &volumeDate, const EntryAttributes &attributes);
 

@@ -49,14 +49,8 @@ iso::DirTree::DirTree(ListView<Entry> view, Entry *entry, DirTree *parent)
 {
 }
 
-void iso::DirTree::OutputHeaderListing(FILE *fp, const int level, const char *name) const
+void iso::DirTree::OutputHeaderListing(FILE *fp, const char *name) const
 {
-    if (level == 0)
-    {
-        fprintf(fp, "#ifndef _ISO_FILES\n");
-        fprintf(fp, "#define _ISO_FILES\n\n");
-    }
-
     fprintf(fp, "/* %s */\n", name);
 
     for (const auto it : GetView())
@@ -80,14 +74,12 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const int level, const char *na
 
         fprintf(fp, "#define %-17s %u\n", temp_name.c_str(), it->lba);
     }
+    fprintf(fp, "\n");
 
     for (const auto it : GetView())
     {
         if (it->type == EntryType::EntryDir)
-        {
-            fprintf(fp, "\n");
-            it->subdir->OutputHeaderListing(fp, level + 1, it->identifier.c_str());
-        }
+            it->subdir->OutputHeaderListing(fp, it->identifier.c_str());
     }
 }
 
@@ -99,7 +91,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
         // Write entry type with 4 spaces at start
         fprintf(fp, "%*s%-6s|", level + 4, "", type);
         // Write entry name
-        fprintf(fp, "%-14s|", name);
+        fprintf(fp, "%-32s|", name);
         // Write entry size in sectors
         fprintf(fp, "%-8s|", sectors);
         // Write LBA offset
@@ -127,7 +119,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
         if (it->type == EntryType::EntryDir || (it->type == EntryType::EntryDummy && level == 0 && it->lba > maxlba))
             continue;
 
-        const char *typeStr = it->type == EntryType::EntryFile ? " File" : "Dummy";
+        const char *typeStr = it->type == EntryType::EntryFile ? "File " : "Dummy";
         std::string nameStr = it->type == EntryType::EntryFile ? it->identifier : "<DUMMY>";
         uint32_t sectors = GetSizeInSectors(it->size);
 
@@ -140,7 +132,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
     {
         if (it->type == EntryType::EntryDir)
         {
-            printEntryDetails(" Dir", it->identifier.c_str(), "", *it);
+            printEntryDetails("Dir ", it->identifier.c_str(), "", *it);
             it->subdir->OutputLBAlisting(fp, level + 1);
         }
         else if (it->type == EntryType::EntryDummy && level == 0 && it->lba > maxlba)
@@ -150,7 +142,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
     }
 
     if (level > 0)
-        fprintf(fp, "%*s End  |%-14s|%-8s|%-7s|%-11s|\n", level + 3, "", m_entry->identifier.c_str(), "", "", "");
+        fprintf(fp, "%*sEnd   |%-32s|%-8s|%-7s|%-11s|\n", level + 3, "", m_entry->identifier.c_str(), "", "", "");
 }
 
 static ISO_DATESTAMP GetISODateStamp(time_t time, char GMToffs, const char *date)
