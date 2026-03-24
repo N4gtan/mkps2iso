@@ -67,61 +67,48 @@ static bool BuildISO(xml::Reader &xml)
     if (xml.ReadHeaders(isoIdentifiers) == nullptr)
         return false;
 
+    if (param::volid_override)
+        isoIdentifiers.VolumeID = param::volid_override->c_str();
+
+    // Print out identifiers if present
     if (!param::quietMode)
     {
-        printf("Building ISO Image: \"%s\"", param::isoFile.string().c_str());
-        printf("\n\n");
-    }
+        printf("Building ISO Image: \"%s\"\n\n", param::isoFile.string().c_str());
 
-    { // Set default identifiers if not present
-        bool hasSystemID = true;
-        if (isoIdentifiers.SystemID == nullptr)
-        {
-            hasSystemID = false;
-            isoIdentifiers.SystemID = "PLAYSTATION";
-        }
+        printf("Identifiers:\n");
 
-        bool hasApplication = true;
-        if (isoIdentifiers.Application == nullptr)
-        {
-            hasApplication = false;
-            isoIdentifiers.Application = "PLAYSTATION";
-        }
+        if (isoIdentifiers.SystemID != nullptr)
+            printf("  System ID         : %s\n", isoIdentifiers.SystemID);
+        else
+            printf("  System ID         : %s%s\n", isoIdentifiers.SystemID = "PLAYSTATION", " (default)"); // Set default identifier if not present
 
-        if (param::volid_override)
-            isoIdentifiers.VolumeID = param::volid_override->c_str();
+        if (isoIdentifiers.VolumeID != nullptr)
+            printf("  Volume ID         : %s\n", isoIdentifiers.VolumeID);
 
-        // Print out identifiers if present
-        if (!param::quietMode)
-        {
-            printf("Identifiers:\n");
-            printf("  System ID         : %s%s\n", isoIdentifiers.SystemID, hasSystemID ? "" : " (default)");
+        if (isoIdentifiers.VolumeSet != nullptr)
+            printf("  Volume Set ID     : %s\n", isoIdentifiers.VolumeSet);
 
-            if (isoIdentifiers.VolumeID != nullptr)
-                printf("  Volume ID         : %s\n", isoIdentifiers.VolumeID);
+        if (isoIdentifiers.Publisher != nullptr)
+            printf("  Publisher ID      : %s\n", isoIdentifiers.Publisher);
 
-            if (isoIdentifiers.VolumeSet != nullptr)
-                printf("  Volume Set ID     : %s\n", isoIdentifiers.VolumeSet);
+        if (isoIdentifiers.DataPreparer != nullptr)
+            printf("  Data Preparer ID  : %s\n", isoIdentifiers.DataPreparer);
 
-            if (isoIdentifiers.Publisher != nullptr)
-                printf("  Publisher ID      : %s\n", isoIdentifiers.Publisher);
+        if (isoIdentifiers.Application != nullptr)
+            printf("  Application ID    : %s\n", isoIdentifiers.Application);
+        else
+            printf("  Application ID    : %s%s\n", isoIdentifiers.Application = "PLAYSTATION", " (default)"); // Set default identifier if not present
 
-            if (isoIdentifiers.DataPreparer != nullptr)
-                printf("  Data Preparer ID  : %s\n", isoIdentifiers.DataPreparer);
+        if (isoIdentifiers.Copyright != nullptr)
+            printf("  Copyright ID      : %s\n", isoIdentifiers.Copyright);
 
-            printf("  Application ID    : %s%s\n", isoIdentifiers.Application, hasApplication ? "" : " (default)");
+        if (isoIdentifiers.CreationDate != nullptr)
+            printf("  Creation Date     : %s\n", isoIdentifiers.CreationDate);
 
-            if (isoIdentifiers.Copyright != nullptr)
-                printf("  Copyright ID      : %s\n", isoIdentifiers.Copyright);
+        if (isoIdentifiers.ModificationDate != nullptr)
+            printf("  Modification Date : %s\n", isoIdentifiers.ModificationDate);
 
-            if (isoIdentifiers.CreationDate != nullptr)
-                printf("  Creation Date     : %s\n", isoIdentifiers.CreationDate);
-
-            if (isoIdentifiers.ModificationDate != nullptr)
-                printf("  Modification Date : %s\n", isoIdentifiers.ModificationDate);
-
-            printf("\n");
-        }
+        printf("\n");
     }
 
     // If empty, blank sectors will be written.
@@ -198,7 +185,7 @@ static bool BuildISO(xml::Reader &xml)
         return EXIT_FAILURE;
     }
 
-    // Write the file system
+    // Write files
     if (!param::quietMode)
         printf("Repacking...\n");
 
@@ -240,7 +227,7 @@ static bool BuildISO(xml::Reader &xml)
 
     // Write file system
     if (!param::quietMode)
-        printf("Writing directories... ");
+        printf("Writing descriptors... ");
 
     // Write ISO descriptors
     dirTree->WriteIsoDescriptors(totalLenLBA, isoIdentifiers);
