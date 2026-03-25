@@ -36,7 +36,7 @@ struct ISO_DATESTAMP
     unsigned char hour;   // hour, in the range from 0 to 23
     unsigned char minute; // minute, in the range from 0 to 59
     unsigned char second; // Second, in the range from 0 to 59
-    char GMToffs;         // Greenwich Mean Time offset (usually 0x24)
+    signed char GMToffs;  // Greenwich Mean Time offset (usually 0x24)
 };
 
 /// Structure of a long date time format, specified in Section 8.4.26.1 of ECMA 119
@@ -49,7 +49,7 @@ struct ISO_LONG_DATESTAMP
     char minute[2];      // minute of the hour from 0 to 59
     char second[2];      // second of the minute from 0 to 59
     char hsecond[2];     // hundredths of a second
-    char GMToffs;        // Greenwich Mean Time offset (usually 0x24)
+    signed char GMToffs; // Greenwich Mean Time offset (usually 0x24)
 };
 
 /// Structure of an ISO path table entry
