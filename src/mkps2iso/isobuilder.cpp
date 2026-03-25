@@ -868,17 +868,18 @@ static void SetBuggyVolSetIdent(dstring *volSetIdent, const ISO_DATESTAMP &date,
 template <size_t N>
 static void SetUdfIdent(uint8_t (&dest)[N], std::string_view src)
 {
-    strncpy(reinterpret_cast<char *>(dest), src.data(), src.size());
+    memcpy(dest, src.data(), std::min(src.size(), N));
 }
 
 template <size_t N>
-static void SetUdfDString(uint8_t (&dest)[N], const char *src)
+static void SetUdfDString(dstring (&dest)[N], const char *src)
 {
-    dest[0] = COMPRESSION_ID_ALGORITHM_8BIT;    
+    dest[0] = COMPRESSION_ID_ALGORITHM_8BIT;
+    size_t dstrlen = 0;
     if (src != nullptr)
-        strncpy(reinterpret_cast<char *>(dest + 1), src, N - 2);
+        memcpy(dest + 1, src, dstrlen = std::min(strlen(src), N - 2));
 
-    dest[N - 1] = strlen(reinterpret_cast<const char *>(dest));
+    dest[N - 1] = 1 + dstrlen;
 }
 
 void iso::WriteExtendedDescriptors()
