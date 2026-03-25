@@ -117,20 +117,20 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
 
 static void CreateDirs(Entry &dirEntry, size_t &numDirs)
 {
+    std::error_code ec;
+    const fs::path dirPath = param::outPath / dirEntry.path / dirEntry.identifier;
+    fs::create_directories(dirPath, ec);
+    if (ec)
+    {
+        printf("\nERROR: Cannot create directory \"%s\". %s\n", dirPath.string().c_str(), ec.message().c_str());
+        exit(EXIT_FAILURE);
+    }
+
     size_t subDirCount = 0;
     for (auto it : dirEntry.subdir->GetView())
     {
         if (it->type != EntryType::EntryDir)
             continue;
-
-        std::error_code ec;
-        const fs::path dirPath = param::outPath / it->path / it->identifier;
-        fs::create_directories(dirPath, ec);
-        if (ec)
-        {
-            printf("\nERROR: Cannot create directory \"%s\". %s\n", dirPath.parent_path().string().c_str(), ec.message().c_str());
-            exit(EXIT_FAILURE);
-        }
 
         subDirCount++;
         CreateDirs(*it, ++numDirs);
@@ -329,8 +329,8 @@ static void ParseISO(ISO_DESCRIPTOR &descriptor)
 
     if (!param::quietMode)
     {
-        printf("  Files Total: %zu\n", entries.size() - numDirs);
-        printf("  Directories: %zu\n", numDirs - 1);
+        printf("  Files Total: %zu\n", entries.size()-1 - numDirs);
+        printf("  Directories: %zu\n", numDirs);
         printf("  Total file system size: %u bytes (%u sectors)\n", totalLenLBA * DVD_SECTOR_SIZE, totalLenLBA);
 
         printf("\nUnpacking...\n");
