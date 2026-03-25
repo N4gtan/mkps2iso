@@ -18,11 +18,11 @@ namespace xml
 
         // Parses the elements before <directory_tree> element.
         // Returns self.
-        xml::Reader *ReadHeaders(iso::IDENTIFIERS &isoIdentifiers);
+        xml::Reader *ReadHeaders();
 
         // Parses <directory_tree> element.
         // Returns the generated DirTree.
-        iso::DirTree *ReadDirTree(std::list<Entry> &entries, const char *&volDate);
+        iso::DirTree *ReadDirTree(std::list<Entry> &entries);
 
         tinyxml2::XMLElement *NextProjectElement();
     };

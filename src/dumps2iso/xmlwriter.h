@@ -17,7 +17,7 @@ namespace xml
 
         // Writes the elements before <directory_tree> element.
         // Returns self.
-        xml::Writer *WriteHeaders(const ISO_DESCRIPTOR &descriptor, const std::string &licenseFile);
+        xml::Writer *WriteHeaders(const std::string &licenseFile);
 
         // Writes the entries, automatically filling LBA gaps with dummies.
         // Returns the last inferred LBA.

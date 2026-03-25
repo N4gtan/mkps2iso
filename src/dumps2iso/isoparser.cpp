@@ -89,34 +89,42 @@ std::optional<Entry> iso::DirTree::ReadRootDir(const int lba)
             const int begSeq = avdp->mainVolDescSeqExt.extLocation;
             const int endSeq = begSeq + (avdp->mainVolDescSeqExt.extLength / DVD_SECTOR_SIZE);
 
+            int fndDescs   = 0;
             int fsdLogical = 0;
-            bool foundPD   = false;
-            bool foundLVD  = false;
             for (int i = begSeq; i < endSeq; ++i)
             {
                 dvd::reader->SeekToSector(i);
                 const tag *descTag = reinterpret_cast<const tag *>(dvd::reader->GetSectorBuff());
 
-                if (descTag->tagIdent == TAG_IDENT_PD && !foundPD)
+                if (descTag->tagIdent == TAG_IDENT_PVD && (fndDescs & 1) == 0)
                 {
-                    partitionStartLBA = reinterpret_cast<const partitionDesc *>(dvd::reader->GetSectorBuff())->partitionStartingLocation;
-                    foundPD    = true;
+                    fndDescs  |= 1;
+                    auto setId = reinterpret_cast<const primaryVolDesc *>(dvd::reader->GetSectorBuff())->volSetIdent+17;
+                    memcpy(iso::descriptor.volumeSetIdentifier, setId, strnlen(reinterpret_cast<const char *>(setId), sizeof(iso::descriptor.volumeID)));
                 }
-                else if (descTag->tagIdent == TAG_IDENT_LVD && !foundLVD)
+                else if (descTag->tagIdent == TAG_IDENT_PD && (fndDescs & 2) == 0)
                 {
-                    fsdLogical = reinterpret_cast<const logicalVolDesc *>(dvd::reader->GetSectorBuff())->logicalVolContentsUse.extLocation.logicalBlockNum;
-                    foundLVD   = true;
+                    fndDescs  |= 2;
+                    partitionStartLBA = reinterpret_cast<const partitionDesc *>(dvd::reader->GetSectorBuff())->partitionStartingLocation;
+                }
+                else if (descTag->tagIdent == TAG_IDENT_LVD && (fndDescs & 4) == 0)
+                {
+                    fndDescs  |= 4;
+                    auto lvd   = reinterpret_cast<const logicalVolDesc *>(dvd::reader->GetSectorBuff());
+                    fsdLogical = lvd->logicalVolContentsUse.extLocation.logicalBlockNum;
+                    auto volId = lvd->logicalVolIdent+1;
+                    memcpy(iso::descriptor.volumeID, volId, strnlen(reinterpret_cast<const char *>(volId), sizeof(iso::descriptor.volumeID)));
                 }
                 else if (descTag->tagIdent == TAG_IDENT_TD)
                 {
                     break;
                 }
 
-                if (foundPD && foundLVD)
+                if ((fndDescs & 7) == 7)
                     break;
             }
 
-            if (!foundPD || !foundLVD) [[unlikely]]
+            if ((fndDescs & 6) != 6) [[unlikely]]
                 return std::nullopt;
 
             dvd::reader->SeekToSector(partitionStartLBA + fsdLogical);

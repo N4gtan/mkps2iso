@@ -37,6 +37,7 @@ namespace iso
         static std::optional<Entry> ReadEntryISO();
         static std::optional<Entry> ReadEntryUDF();
     };
+    inline ISO_DESCRIPTOR descriptor;
 
     template <bool udf>
     ::Entry &ParseRoot(std::list<Entry> &entries, const uint32_t lba, const std::vector<PathTableEntry> *pathTableList);

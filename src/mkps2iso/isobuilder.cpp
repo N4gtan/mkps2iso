@@ -574,7 +574,7 @@ static void CopyStringPadWithSpaces(char (&dest)[N], const char *src)
     std::fill(begin, end, ' ');
 }
 
-void iso::DirTree::WriteIsoDescriptors(const int totalLenLBA, const iso::IDENTIFIERS &id) const
+void iso::DirTree::WriteIsoDescriptors(const int totalLenLBA) const
 {
     ISO_DESCRIPTOR isoDescriptor{};
 
@@ -583,32 +583,32 @@ void iso::DirTree::WriteIsoDescriptors(const int totalLenLBA, const iso::IDENTIF
     CopyStringPadWithSpaces(isoDescriptor.header.identifier, VSD_STD_ID_CD001);
 
     // Set System identifier
-    CopyStringPadWithSpaces(isoDescriptor.systemID, id.SystemID);
+    CopyStringPadWithSpaces(isoDescriptor.systemID, iso::isoIdentifiers.SystemID);
 
     // Set Volume identifier
-    CopyStringPadWithSpaces(isoDescriptor.volumeID, id.VolumeID);
+    CopyStringPadWithSpaces(isoDescriptor.volumeID, iso::isoIdentifiers.VolumeID);
 
     // Set Application identifier
-    CopyStringPadWithSpaces(isoDescriptor.applicationIdentifier, id.Application);
+    CopyStringPadWithSpaces(isoDescriptor.applicationIdentifier, iso::isoIdentifiers.Application);
 
     // Volume Set identifier
-    CopyStringPadWithSpaces(isoDescriptor.volumeSetIdentifier, id.VolumeSet);
+    CopyStringPadWithSpaces(isoDescriptor.volumeSetIdentifier, iso::isoIdentifiers.VolumeSet);
 
     // Publisher identifier
-    CopyStringPadWithSpaces(isoDescriptor.publisherIdentifier, id.Publisher);
+    CopyStringPadWithSpaces(isoDescriptor.publisherIdentifier, iso::isoIdentifiers.Publisher);
 
     // Data preparer identifier
-    CopyStringPadWithSpaces(isoDescriptor.dataPreparerIdentifier, id.DataPreparer);
+    CopyStringPadWithSpaces(isoDescriptor.dataPreparerIdentifier, iso::isoIdentifiers.DataPreparer);
 
     // Copyright (file) identifier
-    CopyStringPadWithSpaces(isoDescriptor.copyrightFileIdentifier, id.Copyright);
+    CopyStringPadWithSpaces(isoDescriptor.copyrightFileIdentifier, iso::isoIdentifiers.Copyright);
 
     // Unneeded identifiers
     CopyStringPadWithSpaces(isoDescriptor.abstractFileIdentifier, nullptr);
     CopyStringPadWithSpaces(isoDescriptor.bibliographicFilelIdentifier, nullptr);
 
-    ParseLongDateFromString(isoDescriptor.volumeCreateDate, id.CreationDate);
-    ParseLongDateFromString(isoDescriptor.volumeModifyDate, id.ModificationDate);
+    ParseLongDateFromString(isoDescriptor.volumeCreateDate, iso::isoIdentifiers.CreationDate);
+    ParseLongDateFromString(isoDescriptor.volumeModifyDate, iso::isoIdentifiers.ModificationDate);
     isoDescriptor.volumeEffectiveDate = isoDescriptor.volumeExpiryDate = GetUnspecifiedLongDate();
     isoDescriptor.fileStructVersion = 1;
 
@@ -835,7 +835,7 @@ static void SetTag(void *ptr, const uint16_t tagIdent, const uint32_t lba, const
 }
 
 // Emulates the exact buggy behavior of Sony's CDVDGEN to generate a 1:1 volSetIdent
-static void SetBuggyVolSetIdent(dstring *volSetIdent, const ISO_DATESTAMP &date, const char *VolumeID)
+static void SetBuggyVolSetIdent(dstring *volSetIdent, const ISO_DATESTAMP &date)
 {
     // Calculate MS-DOS FAT Date and Time, CDVDGEN used it instead of UNIX time
     uint16_t dosYear = (date.year >= 80) ? (date.year - 80) : 0;
@@ -859,8 +859,8 @@ static void SetBuggyVolSetIdent(dstring *volSetIdent, const ISO_DATESTAMP &date,
     volSetIdent[0] = COMPRESSION_ID_ALGORITHM_8BIT;
     memcpy(volSetIdent+1, buggyHex, sizeof(buggyHex));
     CopyStringPadWithSpaces(reinterpret_cast<char(&)[40]>(volSetIdent[9]), "SCEI");
-    if (VolumeID != nullptr)
-        memcpy(volSetIdent+17, VolumeID, std::min(strlen(VolumeID), sizeof(primaryVolDesc::volIdent)));
+    if (iso::isoIdentifiers.VolumeSet != nullptr)
+        memcpy(volSetIdent+17, iso::isoIdentifiers.VolumeSet, strnlen(iso::isoIdentifiers.VolumeSet, sizeof(primaryVolDesc::volIdent)));
 
     volSetIdent[sizeof(primaryVolDesc::volSetIdent) - 1] = 49; // fixed length
 }
@@ -877,7 +877,7 @@ static void SetUdfDString(dstring (&dest)[N], const char *src)
     dest[0] = COMPRESSION_ID_ALGORITHM_8BIT;
     size_t dstrlen = 0;
     if (src != nullptr)
-        memcpy(dest + 1, src, dstrlen = std::min(strlen(src), N - 2));
+        memcpy(dest + 1, src, dstrlen = strnlen(src, N - 2));
 
     dest[N - 1] = 1 + dstrlen;
 }
@@ -905,27 +905,27 @@ void iso::WriteExtendedDescriptors()
     isoDescriptorSectors->WriteMemory(buffer, sizeof(buffer));
 }
 
-void iso::WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t partitionSize, const iso::IDENTIFIERS &id, const uint32_t lba)
+void iso::WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t partitionSize, const uint32_t lba)
 {
     int descSeqNum = 1;
     ISO_DATESTAMP date;
-    ParseDateFromString(date, id.CreationDate);
+    ParseDateFromString(date, iso::isoIdentifiers.CreationDate);
 
     uint8_t buffer[sizeof(layout::UDF) - sizeof(layout::UDF::tls)]{};
 
     // Primary Volume Descriptor
     auto pvd = reinterpret_cast<primaryVolDesc *>(buffer);
-    SetUdfDString(pvd->volIdent, id.VolumeID);
+    SetUdfDString(pvd->volIdent, iso::isoIdentifiers.VolumeID);
     pvd->volSeqNum          = 1;
     pvd->maxVolSeqNum       = 1;
     pvd->interchangeLvl     = UDF_PVD_INTERCHANGE_LVL_SINGLE_VOL;
     pvd->maxInterchangeLvl  = UDF_PVD_INTERCHANGE_LVL_SINGLE_VOL;
     pvd->charSetList        = 1 << UDF_CHAR_SET_TYPE;
     pvd->maxCharSetList     = 1 << UDF_CHAR_SET_TYPE;
-    SetBuggyVolSetIdent(pvd->volSetIdent, date, id.VolumeSet);
+    SetBuggyVolSetIdent(pvd->volSetIdent, date);
     SetUdfIdent(pvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
     SetUdfIdent(pvd->explanatoryCharSet.charSetInfo, UDF_CHAR_SET_INFO);
-    CopyStringPadWithSpaces(reinterpret_cast<char(&)[23]>(pvd->appIdent.ident), id.Application);
+    CopyStringPadWithSpaces(reinterpret_cast<char(&)[23]>(pvd->appIdent.ident), iso::isoIdentifiers.Application);
     pvd->recordingDateAndTime = DateStampToTimeStamp(date);
     SetUdfIdent(pvd->impIdent.ident, GENERATOR);
     SetTag(pvd, TAG_IDENT_PVD, lba);
@@ -936,7 +936,7 @@ void iso::WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t p
     SetUdfIdent(iuvd->impIdent.ident, UDF_ID_LV_INFO);
     reinterpret_cast<domainIdentSuffix *>(&iuvd->impIdent.identSuffix.OSClass)->UDFRevision = UDF_REVISION_MINIMUM; // Sony bug
     SetUdfIdent(iuvd->impUse.LVICharset.charSetInfo, UDF_CHAR_SET_INFO);
-    SetUdfDString(iuvd->impUse.logicalVolIdent, id.VolumeID);
+    SetUdfDString(iuvd->impUse.logicalVolIdent, iso::isoIdentifiers.VolumeID);
     SetUdfDString(iuvd->impUse.LVInfo1, nullptr);
     SetUdfDString(iuvd->impUse.LVInfo2, nullptr);
     SetUdfDString(iuvd->impUse.LVInfo3, nullptr);
@@ -959,7 +959,7 @@ void iso::WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t p
     auto lvd = reinterpret_cast<logicalVolDesc *>(buffer+offsetof(layout::UDF, lvd));
     lvd->volDescSeqNum                       = descSeqNum;
     SetUdfIdent(lvd->descCharSet.charSetInfo, UDF_CHAR_SET_INFO);
-    SetUdfDString(lvd->logicalVolIdent, id.VolumeID);
+    SetUdfDString(lvd->logicalVolIdent, iso::isoIdentifiers.VolumeID);
     lvd->logicalBlockSize                    = DVD_SECTOR_SIZE;
     SetUdfIdent(lvd->domainIdent.ident, UDF_ID_COMPLIANT);
     lvd->domainIdent.identSuffix.UDFRevision = UDF_REVISION_MINIMUM;
@@ -989,10 +989,10 @@ void iso::WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t p
     udfDescriptorSectors->WriteBlankSectors(GetSizeInSectors(sizeof(layout::UDF::tls)));
 }
 
-void iso::WriteLviDescriptors(const iso::DirTree *dirTree, const uint32_t partitionSize, const iso::IDENTIFIERS &id)
+void iso::WriteLviDescriptors(const iso::DirTree *dirTree, const uint32_t partitionSize)
 {
     ISO_DATESTAMP date;
-    ParseDateFromString(date, id.CreationDate);
+    ParseDateFromString(date, iso::isoIdentifiers.CreationDate);
 
     uint8_t buffer[sizeof(layout::LVID)]{};
 
@@ -1135,10 +1135,10 @@ void iso::DirTree::WriteInfoCtrlBlocks(const uint32_t partitionStartLBA)
     }
 }
 
-void iso::DirTree::WriteFileSetDescriptors(const uint32_t partitionStartLBA, const iso::IDENTIFIERS &id) const
+void iso::DirTree::WriteFileSetDescriptors(const uint32_t partitionStartLBA) const
 {
     ISO_DATESTAMP date;
-    ParseDateFromString(date, id.CreationDate);
+    ParseDateFromString(date, iso::isoIdentifiers.CreationDate);
 
     uint8_t buffer[sizeof(layout::FSD)]{};
 
@@ -1149,7 +1149,7 @@ void iso::DirTree::WriteFileSetDescriptors(const uint32_t partitionStartLBA, con
     fsd->charSetList          = 1 << UDF_CHAR_SET_TYPE;
     fsd->maxCharSetList       = 1 << UDF_CHAR_SET_TYPE;
     SetUdfIdent(fsd->logicalVolIdentCharSet.charSetInfo, UDF_CHAR_SET_INFO);
-    SetUdfDString(fsd->logicalVolIdent, id.VolumeID);
+    SetUdfDString(fsd->logicalVolIdent, iso::isoIdentifiers.VolumeID);
     SetUdfIdent(fsd->fileSetCharSet.charSetInfo, UDF_CHAR_SET_INFO);
     SetUdfDString(fsd->fileSetIdent, "PLAYSTATION2 DVD-ROM FILE SET");
     fsd->rootDirectoryICB.extLength = m_entry->size;

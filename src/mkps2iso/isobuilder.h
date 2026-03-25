@@ -101,10 +101,10 @@ namespace iso
          *  have been written to the DVD image.
          */
         void WriteDirectoryRecords() const;
-        void WriteIsoDescriptors(const int totalLenLBA, const IDENTIFIERS &id) const;
+        void WriteIsoDescriptors(const int totalLenLBA) const;
 
         void WriteInfoCtrlBlocks(const uint32_t partitionStartLBA);
-        void WriteFileSetDescriptors(const uint32_t partitionStartLBA, const IDENTIFIERS &id) const;
+        void WriteFileSetDescriptors(const uint32_t partitionStartLBA) const;
         void WriteFileIdDescriptors(const uint32_t partitionStartLBA);
 
         void SaveDirEntriesOrder();
@@ -122,11 +122,12 @@ namespace iso
         uint32_t GetPathDepth(size_t *pathLength = nullptr) const;
         void PrintRecordPath() const;
     };
+    inline IDENTIFIERS isoIdentifiers;
 
     void WriteLicenseData(const uint8_t *data);
 
     void WriteExtendedDescriptors();
-    void WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t partitionSize, const iso::IDENTIFIERS &id, const uint32_t lba);
-    void WriteLviDescriptors(const iso::DirTree *dirTree, const uint32_t partitionSize, const iso::IDENTIFIERS &id);
+    void WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t partitionSize, const uint32_t lba);
+    void WriteLviDescriptors(const iso::DirTree *dirTree, const uint32_t partitionSize);
     void WriteAnchorDescriptor(const uint32_t partitionEnd);
 };

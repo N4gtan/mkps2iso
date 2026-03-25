@@ -169,13 +169,13 @@ static bool ParseDirectory(iso::DirTree *dirTree, const tinyxml2::XMLElement *pa
     return true;
 }
 
-iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries, const char *&volDate)
+iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries)
 {
     time(&global::buildTime); // Get current time to be used as timestamps for all directories without source
 
     ISO_DATESTAMP volumeDate;
     // Try to use time from XML. If it's malformed, fall back to local time.
-    if (!ParseDateFromString(volumeDate, volDate))
+    if (!ParseDateFromString(volumeDate, iso::isoIdentifiers.CreationDate))
     {
         // Use local time
         const tm *imageTime = localtime(&global::buildTime);
@@ -189,7 +189,7 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries, const char *&v
 
         // Convert ISO_DATESTAMP to ISO_LONG_DATESTAMP
         static const std::string creationDate = DateToString(volumeDate, true);
-        volDate = creationDate.c_str();
+        iso::isoIdentifiers.CreationDate = creationDate.c_str();
     }
 
     // Establish default entry attributes from XML (if any)
@@ -216,21 +216,21 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries, const char *&v
     return dirTree;
 }
 
-xml::Reader *xml::Reader::ReadHeaders(iso::IDENTIFIERS &isoIdentifiers)
+xml::Reader *xml::Reader::ReadHeaders()
 {
     // Set file system identifiers
     if (const tinyxml2::XMLElement *identifierElement = m_projectElement->FirstChildElement(elem::IDENTIFIERS))
     {
         // Use individual elements defined by each attribute
-        isoIdentifiers.SystemID         = identifierElement->Attribute(attrib::SYSTEM_ID);
-        isoIdentifiers.VolumeID         = identifierElement->Attribute(attrib::VOLUME_ID);
-        isoIdentifiers.VolumeSet        = identifierElement->Attribute(attrib::VOLUME_SET);
-        isoIdentifiers.Publisher        = identifierElement->Attribute(attrib::PUBLISHER);
-        isoIdentifiers.Application      = identifierElement->Attribute(attrib::APPLICATION);
-        isoIdentifiers.DataPreparer     = identifierElement->Attribute(attrib::DATA_PREPARER);
-        isoIdentifiers.Copyright        = identifierElement->Attribute(attrib::COPYRIGHT);
-        isoIdentifiers.CreationDate     = identifierElement->Attribute(attrib::CREATION_DATE);
-        isoIdentifiers.ModificationDate = identifierElement->Attribute(attrib::MODIFICATION_DATE);
+        iso::isoIdentifiers.SystemID         = identifierElement->Attribute(attrib::SYSTEM_ID);
+        iso::isoIdentifiers.VolumeID         = identifierElement->Attribute(attrib::VOLUME_ID);
+        iso::isoIdentifiers.VolumeSet        = identifierElement->Attribute(attrib::VOLUME_SET);
+        iso::isoIdentifiers.Publisher        = identifierElement->Attribute(attrib::PUBLISHER);
+        iso::isoIdentifiers.Application      = identifierElement->Attribute(attrib::APPLICATION);
+        iso::isoIdentifiers.DataPreparer     = identifierElement->Attribute(attrib::DATA_PREPARER);
+        iso::isoIdentifiers.Copyright        = identifierElement->Attribute(attrib::COPYRIGHT);
+        iso::isoIdentifiers.CreationDate     = identifierElement->Attribute(attrib::CREATION_DATE);
+        iso::isoIdentifiers.ModificationDate = identifierElement->Attribute(attrib::MODIFICATION_DATE);
 
         // Is an ID file specified?
         if (const char *identifierFile = identifierElement->Attribute(attrib::ID_FILE))
@@ -245,23 +245,23 @@ xml::Reader *xml::Reader::ReadHeaders(iso::IDENTIFIERS &isoIdentifiers)
                 const char *str;
                 // Use strings defined in file, otherwise leave ones already defined alone
                 if ((str = identifierElement->Attribute(attrib::SYSTEM_ID)))
-                    isoIdentifiers.SystemID         = str;
+                    iso::isoIdentifiers.SystemID         = str;
                 if ((str = identifierElement->Attribute(attrib::VOLUME_ID)))
-                    isoIdentifiers.VolumeID         = str;
+                    iso::isoIdentifiers.VolumeID         = str;
                 if ((str = identifierElement->Attribute(attrib::VOLUME_SET)))
-                    isoIdentifiers.VolumeSet        = str;
+                    iso::isoIdentifiers.VolumeSet        = str;
                 if ((str = identifierElement->Attribute(attrib::PUBLISHER)))
-                    isoIdentifiers.Publisher        = str;
+                    iso::isoIdentifiers.Publisher        = str;
                 if ((str = identifierElement->Attribute(attrib::APPLICATION)))
-                    isoIdentifiers.Application      = str;
+                    iso::isoIdentifiers.Application      = str;
                 if ((str = identifierElement->Attribute(attrib::DATA_PREPARER)))
-                    isoIdentifiers.DataPreparer     = str;
+                    iso::isoIdentifiers.DataPreparer     = str;
                 if ((str = identifierElement->Attribute(attrib::COPYRIGHT)))
-                    isoIdentifiers.Copyright        = str;
+                    iso::isoIdentifiers.Copyright        = str;
                 if ((str = identifierElement->Attribute(attrib::CREATION_DATE)))
-                    isoIdentifiers.CreationDate     = str;
+                    iso::isoIdentifiers.CreationDate     = str;
                 if ((str = identifierElement->Attribute(attrib::MODIFICATION_DATE)))
-                    isoIdentifiers.ModificationDate = str;
+                    iso::isoIdentifiers.ModificationDate = str;
             }
         }
     }

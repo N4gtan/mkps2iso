@@ -65,12 +65,11 @@ static void WriteLogHead(iso::DirTree *dirTree)
 
 static bool BuildISO(xml::Reader &xml)
 {
-    iso::IDENTIFIERS isoIdentifiers{};
-    if (xml.ReadHeaders(isoIdentifiers) == nullptr)
+    if (xml.ReadHeaders() == nullptr)
         return false;
 
     if (param::volid_override)
-        isoIdentifiers.VolumeID = param::volid_override->c_str();
+        iso::isoIdentifiers.VolumeID = param::volid_override->c_str();
 
     // Print out identifiers if present
     if (!param::quietMode)
@@ -79,36 +78,36 @@ static bool BuildISO(xml::Reader &xml)
 
         printf("Identifiers:\n");
 
-        if (isoIdentifiers.SystemID != nullptr)
-            printf("  System ID         : %s\n", isoIdentifiers.SystemID);
+        if (iso::isoIdentifiers.SystemID != nullptr)
+            printf("  System ID         : %s\n", iso::isoIdentifiers.SystemID);
         else
-            printf("  System ID         : %s%s\n", isoIdentifiers.SystemID = "PLAYSTATION", " (default)"); // Set default identifier if not present
+            printf("  System ID         : %s%s\n", iso::isoIdentifiers.SystemID = "PLAYSTATION", " (default)"); // Set default identifier if not present
 
-        if (isoIdentifiers.VolumeID != nullptr)
-            printf("  Volume ID         : %s\n", isoIdentifiers.VolumeID);
+        if (iso::isoIdentifiers.VolumeID != nullptr)
+            printf("  Volume ID         : %s\n", iso::isoIdentifiers.VolumeID);
 
-        if (isoIdentifiers.VolumeSet != nullptr)
-            printf("  Volume Set ID     : %s\n", isoIdentifiers.VolumeSet);
+        if (iso::isoIdentifiers.VolumeSet != nullptr)
+            printf("  Volume Set ID     : %s\n", iso::isoIdentifiers.VolumeSet);
 
-        if (isoIdentifiers.Publisher != nullptr)
-            printf("  Publisher ID      : %s\n", isoIdentifiers.Publisher);
+        if (iso::isoIdentifiers.Publisher != nullptr)
+            printf("  Publisher ID      : %s\n", iso::isoIdentifiers.Publisher);
 
-        if (isoIdentifiers.DataPreparer != nullptr)
-            printf("  Data Preparer ID  : %s\n", isoIdentifiers.DataPreparer);
+        if (iso::isoIdentifiers.DataPreparer != nullptr)
+            printf("  Data Preparer ID  : %s\n", iso::isoIdentifiers.DataPreparer);
 
-        if (isoIdentifiers.Application != nullptr)
-            printf("  Application ID    : %s\n", isoIdentifiers.Application);
+        if (iso::isoIdentifiers.Application != nullptr)
+            printf("  Application ID    : %s\n", iso::isoIdentifiers.Application);
         else
-            printf("  Application ID    : %s%s\n", isoIdentifiers.Application = "PLAYSTATION", " (default)"); // Set default identifier if not present
+            printf("  Application ID    : %s%s\n", iso::isoIdentifiers.Application = "PLAYSTATION", " (default)"); // Set default identifier if not present
 
-        if (isoIdentifiers.Copyright != nullptr)
-            printf("  Copyright ID      : %s\n", isoIdentifiers.Copyright);
+        if (iso::isoIdentifiers.Copyright != nullptr)
+            printf("  Copyright ID      : %s\n", iso::isoIdentifiers.Copyright);
 
-        if (isoIdentifiers.CreationDate != nullptr)
-            printf("  Creation Date     : %s\n", isoIdentifiers.CreationDate);
+        if (iso::isoIdentifiers.CreationDate != nullptr)
+            printf("  Creation Date     : %s\n", iso::isoIdentifiers.CreationDate);
 
-        if (isoIdentifiers.ModificationDate != nullptr)
-            printf("  Modification Date : %s\n", isoIdentifiers.ModificationDate);
+        if (iso::isoIdentifiers.ModificationDate != nullptr)
+            printf("  Modification Date : %s\n", iso::isoIdentifiers.ModificationDate);
 
         printf("\n");
     }
@@ -229,7 +228,7 @@ static bool BuildISO(xml::Reader &xml)
         printf("Writing descriptors... ");
 
     // Write ISO descriptors
-    dirTree->WriteIsoDescriptors(totalLenLBA, isoIdentifiers);
+    dirTree->WriteIsoDescriptors(totalLenLBA);
     dirTree->WriteDirectoryRecords();
 
     // Write Extended Area Descriptors
@@ -237,14 +236,14 @@ static bool BuildISO(xml::Reader &xml)
 
     // Write UDF descriptors
     uint32_t partitionSize = totalLenLBA - GetSizeInSectors(sizeof(anchorVolDescPtr)) - partitionStartLBA;
-    iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, isoIdentifiers, layout::LBA_UDF_MAIN);
-    iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, isoIdentifiers, layout::LBA_UDF_RSRV);
-    iso::WriteLviDescriptors(dirTree, partitionSize, isoIdentifiers);
+    iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, layout::LBA_UDF_MAIN);
+    iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, layout::LBA_UDF_RSRV);
+    iso::WriteLviDescriptors(dirTree, partitionSize);
     iso::WriteAnchorDescriptor(partitionStartLBA + partitionSize);
 
     // Write file system descriptors to finish the image
     dirTree->WriteInfoCtrlBlocks(partitionStartLBA);
-    dirTree->WriteFileSetDescriptors(partitionStartLBA, isoIdentifiers);
+    dirTree->WriteFileSetDescriptors(partitionStartLBA);
     dirTree->WriteFileIdDescriptors(partitionStartLBA);
 
     if (!param::quietMode)

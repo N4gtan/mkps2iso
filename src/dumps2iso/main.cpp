@@ -212,10 +212,9 @@ static void ParseDIR()
     };
 
     // Create descriptors
-    ISO_DESCRIPTOR descriptor{};
-    memcpy(&descriptor.volumeID,              "MKPS2ISO",    sizeof("MKPS2ISO"));
-    memcpy(&descriptor.systemID,              "PLAYSTATION", sizeof("PLAYSTATION"));
-    memcpy(&descriptor.applicationIdentifier, "PLAYSTATION", sizeof("PLAYSTATION"));
+    memcpy(iso::descriptor.volumeID,              "MKPS2ISO",    sizeof("MKPS2ISO"));
+    memcpy(iso::descriptor.systemID,              "PLAYSTATION", sizeof("PLAYSTATION"));
+    memcpy(iso::descriptor.applicationIdentifier, "PLAYSTATION", sizeof("PLAYSTATION"));
 
     if (!param::quietMode)
         printf("\nParsing directory \"%s\"... Done.\n", param::outPath.string().c_str());
@@ -232,7 +231,7 @@ static void ParseDIR()
 
     // Write XML sorted by directories
     param::outputSortedByDir = true;
-    xml::Writer().WriteHeaders(descriptor, licenseFile)->WriteDirTree(entries, postGap);
+    xml::Writer().WriteHeaders(licenseFile)->WriteDirTree(entries, postGap);
     if (!param::quietMode)
     {
         printf("Done.\n");
@@ -249,24 +248,25 @@ static void ParseDIR()
     }
 }
 
-static void ParseISO(ISO_DESCRIPTOR &descriptor)
+static void ParseISO()
 {
     if (!param::quietMode)
     {
         printf("Output directory : \"%s\"\n\n", param::outPath.string().c_str());
 
         printf("Identifiers:\n");
-        PrintId("  System ID         : ", descriptor.systemID);
-        PrintId("  Volume ID         : ", descriptor.volumeID);
-        PrintId("  Volume Set ID     : ", descriptor.volumeSetIdentifier);
-        PrintId("  Publisher ID      : ", descriptor.publisherIdentifier);
-        PrintId("  Data Preparer ID  : ", descriptor.dataPreparerIdentifier);
-        PrintId("  Application ID    : ", descriptor.applicationIdentifier);
-        PrintId("  Copyright ID      : ", descriptor.copyrightFileIdentifier);
+        PrintId("  System ID         : ", iso::descriptor.systemID);
+        PrintId("  Volume ID         : ", iso::descriptor.volumeID);
+        PrintId("  Volume Set ID     : ", iso::descriptor.volumeSetIdentifier);
+        PrintId("  Publisher ID      : ", iso::descriptor.publisherIdentifier);
+        PrintId("  Data Preparer ID  : ", iso::descriptor.dataPreparerIdentifier);
+        PrintId("  Application ID    : ", iso::descriptor.applicationIdentifier);
+        PrintId("  Copyright ID      : ", iso::descriptor.copyrightFileIdentifier);
 
-        PrintDate("  Creation Date     : ", descriptor.volumeCreateDate);
-        PrintDate("  Modification Date : ", descriptor.volumeModifyDate);
-        PrintDate("  Expiration Date   : ", descriptor.volumeExpiryDate);
+        PrintDate("  Creation Date     : ", iso::descriptor.volumeCreateDate);
+        PrintDate("  Modification Date : ", iso::descriptor.volumeModifyDate);
+        PrintDate("  Expiration Date   : ", iso::descriptor.volumeExpiryDate);
+        printf("\n");
 
         if (!param::noXml)
             printf("\nLicense file: \"%s\"\n", (param::outPath / DEFAULT_LICENSE_NAME).string().c_str());
@@ -281,23 +281,23 @@ static void ParseISO(ISO_DESCRIPTOR &descriptor)
             return iso::ParseRoot<true>(entries, layout::LBA_ANCHOR, nullptr);
 
         if (!param::pathTable)
-            return iso::ParseRoot<false>(entries, descriptor.rootDirRecord.entryOffs.lsb, nullptr);
+            return iso::ParseRoot<false>(entries, iso::descriptor.rootDirRecord.entryOffs.lsb, nullptr);
 
-        iso::PathTable pathTable(descriptor.pathTable1Offs, descriptor.pathTableSize.lsb);
-        if (pathTable.entries[0].data.dirOffs != descriptor.rootDirRecord.entryOffs.lsb)
+        iso::PathTable pathTable(iso::descriptor.pathTable1Offs, iso::descriptor.pathTableSize.lsb);
+        if (pathTable.entries[0].data.dirOffs != iso::descriptor.rootDirRecord.entryOffs.lsb)
         {
             printf("\nERROR: Root directory offset in path table does not match the one in volume descriptor.\n"
                     "       The ISO image may be corrupt or invalid.\n");
             exit(EXIT_FAILURE);
         }
-        return iso::ParseRoot<false>(entries, descriptor.rootDirRecord.entryOffs.lsb, &pathTable.entries);
+        return iso::ParseRoot<false>(entries, iso::descriptor.rootDirRecord.entryOffs.lsb, &pathTable.entries);
     }();
 
     // Sort files by LBA for "strict" output
     entries.sort([](const auto &left, const auto &right)
                  { return left.lba < right.lba; });
 
-    const uint32_t totalLenLBA = descriptor.volumeSize.lsb;
+    const uint32_t totalLenLBA = iso::descriptor.volumeSize.lsb;
 
     // PostGap sanity checks
     uint32_t postGap = totalLenLBA - (entries.back().lba + GetSizeInSectors(entries.back().size));
@@ -344,7 +344,7 @@ static void ParseISO(ISO_DESCRIPTOR &descriptor)
         if (!param::quietMode)
             printf("Creating XML document...");
 
-        const uint32_t currentLBA = xml::Writer().WriteHeaders(descriptor, DEFAULT_LICENSE_NAME)->WriteDirTree(entries, postGap);
+        const uint32_t currentLBA = xml::Writer().WriteHeaders(DEFAULT_LICENSE_NAME)->WriteDirTree(entries, postGap);
 
         if (!param::quietMode)
             printf(" Ok.\n\n");
@@ -507,13 +507,12 @@ int Main(int argc, char *argv[])
     }
 
     // Check if file has a valid ISO9660 header
-    ISO_DESCRIPTOR descriptor;
-    if (!dvd::reader->SeekToSector(16) || !dvd::reader->ReadBytes<true>(&descriptor, DVD_SECTOR_SIZE) || memcmp(&descriptor.header, "\1" VSD_STD_ID_CD001 "\1", 7))
+    if (!dvd::reader->SeekToSector(16) || !dvd::reader->ReadBytes<true>(&iso::descriptor, DVD_SECTOR_SIZE) || memcmp(&iso::descriptor.header, "\1" VSD_STD_ID_CD001 "\1", 7) != 0)
     {
         printf("ERROR: File does not contain a valid ISO9660 file system.\n");
         return EXIT_FAILURE;
     }
 
-    ParseISO(descriptor);
+    ParseISO();
     return EXIT_SUCCESS;
 }
