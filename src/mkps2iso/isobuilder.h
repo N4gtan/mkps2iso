@@ -101,7 +101,7 @@ namespace iso
          *  have been written to the DVD image.
          */
         void WriteDirectoryRecords() const;
-        void WriteIsoDescriptors(const int totalLenLBA) const;
+        void WriteIsoDescriptors(const uint32_t layerLenLBA) const;
 
         void WriteInfoCtrlBlocks(const uint32_t partitionStartLBA);
         void WriteFileSetDescriptors(const uint32_t partitionStartLBA) const;
@@ -122,6 +122,7 @@ namespace iso
         uint32_t GetPathDepth(size_t *pathLength = nullptr) const;
         void PrintRecordPath() const;
     };
+    inline uint32_t layerBegLBA;
     inline IDENTIFIERS isoIdentifiers;
 
     void WriteLicenseData(const uint8_t *data);

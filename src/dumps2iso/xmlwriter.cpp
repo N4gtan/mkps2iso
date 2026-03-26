@@ -313,11 +313,14 @@ static void WriteXMLByDirectories(const iso::DirTree *directory, tinyxml2::XMLEl
 
 uint32_t xml::Writer::WriteDirTree(const std::list<Entry> &entries, const uint32_t postGap)
 {
+    // Create <layer> element
+    tinyxml2::XMLElement *layerElement = m_projectElement->InsertNewChildElement(xml::elem::LAYER);
+
     // Create <default_attributes> now so it lands before the <directory_tree>
-    tinyxml2::XMLElement *defaultAttributesElement = m_projectElement->InsertNewChildElement(xml::elem::DEFAULT_ATTRIBUTES);
+    tinyxml2::XMLElement *defaultAttributesElement = layerElement->InsertNewChildElement(xml::elem::DEFAULT_ATTRIBUTES);
 
     const Entry &root = entries.front();
-    tinyxml2::XMLElement *directoryTreeElement = WriteXMLEntry(root, m_projectElement);
+    tinyxml2::XMLElement *directoryTreeElement = WriteXMLEntry(root, layerElement);
 
     uint32_t currentLBA = root.lbaICB + entries.size(); // This may fail for an image that was not created with CDVDGEN
     if (param::outputSortedByDir)
@@ -333,7 +336,7 @@ uint32_t xml::Writer::WriteDirTree(const std::list<Entry> &entries, const uint32
 
     // Delete the element if it's empty
     if (defaultAttributesElement->FirstAttribute() == nullptr)
-        m_projectElement->DeleteChild(defaultAttributesElement);
+        layerElement->DeleteChild(defaultAttributesElement);
 
     return currentLBA;
 }

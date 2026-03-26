@@ -193,12 +193,12 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries)
     }
 
     // Establish default entry attributes from XML (if any)
-    defaultAttributes = ReadEntryAttributes(defaultAttributes, m_projectElement->FirstChildElement(elem::DEFAULT_ATTRIBUTES));
+    defaultAttributes = ReadEntryAttributes(defaultAttributes, m_layerElement->FirstChildElement(elem::DEFAULT_ATTRIBUTES));
 
-    const tinyxml2::XMLElement *directoryTree = m_projectElement->FirstChildElement(elem::DIRECTORY_TREE);
+    const tinyxml2::XMLElement *directoryTree = m_layerElement->FirstChildElement(elem::DIRECTORY_TREE);
     if (directoryTree == nullptr)
     {
-        printf("ERROR: No %s element specified for the project on line %d.\n", elem::DIRECTORY_TREE, m_projectElement->GetLineNum());
+        printf("ERROR: No %s element specified for the project on line %d.\n", elem::DIRECTORY_TREE, m_layerElement->GetLineNum());
         return nullptr;
     }
 
@@ -301,6 +301,24 @@ xml::Reader *xml::Reader::ReadHeaders()
     }
 
     return this;
+}
+
+tinyxml2::XMLElement *xml::Reader::NextLayerElement()
+{
+    if (m_layerElement == nullptr)
+    {
+        // First call: Check if there is a <layer> element
+        m_layerElement = m_projectElement->FirstChildElement(xml::elem::LAYER);
+        if (m_layerElement == nullptr)
+            printf("ERROR: Cannot find <layer> element in XML document.\n");
+    }
+    else
+    {
+        // Subsequent calls: get the next sibling
+        m_layerElement = m_layerElement->NextSiblingElement(xml::elem::LAYER);
+    }
+
+    return m_layerElement;
 }
 
 tinyxml2::XMLElement *xml::Reader::NextProjectElement()

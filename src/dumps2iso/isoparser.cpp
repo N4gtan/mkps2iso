@@ -16,7 +16,7 @@ void iso::PathTable::FreePathTable()
 
 size_t iso::PathTable::ReadPathTable(const int lba, const size_t size)
 {
-    if (lba < 0 || !dvd::reader->SeekToSector(lba) || size <= sizeof(ISO_PATHTABLE_ENTRY))  [[unlikely]]
+    if (lba < 0 || !dvd::reader->SeekToSector(layerBegLBA + lba) || size <= sizeof(ISO_PATHTABLE_ENTRY))  [[unlikely]]
         return 0;
 
     FreePathTable();
@@ -76,7 +76,7 @@ iso::DirTree::DirTree(ListView<Entry> view)
 template <bool udf>
 std::optional<Entry> iso::DirTree::ReadRootDir(const int lba)
 {
-    dvd::reader->SeekToSector(lba);
+    dvd::reader->SeekToSector(layerBegLBA + lba);
     auto entry = [&]() -> std::optional<Entry>
     {
         if constexpr (!udf)
@@ -93,7 +93,7 @@ std::optional<Entry> iso::DirTree::ReadRootDir(const int lba)
             int fsdLogical = 0;
             for (int i = begSeq; i < endSeq; ++i)
             {
-                dvd::reader->SeekToSector(i);
+                dvd::reader->SeekToSector(layerBegLBA + i);
                 const tag *descTag = reinterpret_cast<const tag *>(dvd::reader->GetSectorBuff());
 
                 if (descTag->tagIdent == TAG_IDENT_PVD && (fndDescs & 1) == 0)
@@ -127,11 +127,11 @@ std::optional<Entry> iso::DirTree::ReadRootDir(const int lba)
             if ((fndDescs & 6) != 6) [[unlikely]]
                 return std::nullopt;
 
-            dvd::reader->SeekToSector(partitionStartLBA + fsdLogical);
+            dvd::reader->SeekToSector(layerBegLBA + partitionStartLBA + fsdLogical);
 
             Entry entry{};
             entry.lbaICB = partitionStartLBA + reinterpret_cast<const fileSetDesc *>(dvd::reader->GetSectorBuff())->rootDirectoryICB.extLocation.logicalBlockNum;
-            dvd::reader->SeekToSector(entry.lbaICB);
+            dvd::reader->SeekToSector(layerBegLBA + entry.lbaICB);
             ReadICB(entry);
             return entry;
         }
@@ -149,9 +149,9 @@ void iso::DirTree::ReadDirEntries(int lba, const size_t size)
 {
     int entryCount          = 0;
     constexpr int entrySkip = udf ? 1 : 2;
-    const size_t endPos     = DVD_SECTOR_SIZE * static_cast<size_t>(lba) + size;
+    const size_t endPos     = DVD_SECTOR_SIZE * static_cast<size_t>(layerBegLBA + lba) + size;
 
-    dvd::reader->SeekToSector(lba);
+    dvd::reader->SeekToSector(layerBegLBA + lba);
     while (dvd::reader->GetPos() < endPos)
     {
         auto entry = [&]() -> std::optional<Entry> {
@@ -170,7 +170,7 @@ void iso::DirTree::ReadDirEntries(int lba, const size_t size)
             }
             else
             {
-                dvd::reader->SeekToSector(++lba);
+                dvd::reader->SeekToSector(layerBegLBA + ++lba);
                 continue;
             }
         }
@@ -288,7 +288,7 @@ std::optional<Entry> iso::DirTree::ReadEntryUDF()
 
     // Seek to ICB
     entry.lbaICB = partitionStartLBA + fid.icb.extLocation.logicalBlockNum;
-    dvd::reader->SeekToSector(entry.lbaICB);
+    dvd::reader->SeekToSector(layerBegLBA + entry.lbaICB);
 
     // Set Entry Data
     ReadICB(entry);

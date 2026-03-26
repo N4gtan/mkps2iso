@@ -42,6 +42,7 @@ namespace dvd
         // Get current offset in byte units
         size_t GetPos() const;
 
+        uint32_t GetTotalSectors() const { return m_totalSectors; }
         const uint8_t *GetSectorBuff() const { return m_sectorBuff; }
 
         // Close file

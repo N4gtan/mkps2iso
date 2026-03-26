@@ -72,7 +72,7 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const char *name) const
             }
         }
 
-        fprintf(fp, "#define %-17s %u\n", temp_name.c_str(), it->lba);
+        fprintf(fp, "#define %-17s %u\n", temp_name.c_str(), layerBegLBA + it->lba);
     }
     fprintf(fp, "\n");
 
@@ -95,7 +95,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
         // Write entry size in sectors
         fprintf(fp, "%-8s|", sectors);
         // Write LBA offset
-        fprintf(fp, "%-7u|", entry.lba);
+        fprintf(fp, "%-7u|", layerBegLBA + entry.lba);
         // Write size in byte units
         fprintf(fp, "%-11s|", entry.type != EntryType::EntryDir ? std::to_string(entry.size).c_str() : "");
         // Write source file path
@@ -532,7 +532,7 @@ void iso::DirTree::WriteFiles() const
             }
 
             auto fp = OpenScopedFile(entry.path, "rb");
-            auto sectorView = dvd::writer->GetSectorView(entry.lba, GetSizeInSectors(entry.size));
+            auto sectorView = dvd::writer->GetSectorView(layerBegLBA + entry.lba, GetSizeInSectors(entry.size));
             sectorView->WriteFile(fp.get());
 
             if (!param::quietMode)
@@ -542,7 +542,7 @@ void iso::DirTree::WriteFiles() const
         else if (entry.type == EntryType::EntryDummy)
         {
             const uint32_t sizeInSectors = GetSizeInSectors(entry.size);
-            auto sectorView = dvd::writer->GetSectorView(entry.lba, sizeInSectors);
+            auto sectorView = dvd::writer->GetSectorView(layerBegLBA + entry.lba, sizeInSectors);
 
             sectorView->WriteBlankSectors(sizeInSectors);
         }
@@ -574,7 +574,7 @@ static void CopyStringPadWithSpaces(char (&dest)[N], const char *src)
     std::fill(begin, end, ' ');
 }
 
-void iso::DirTree::WriteIsoDescriptors(const int totalLenLBA) const
+void iso::DirTree::WriteIsoDescriptors(const uint32_t layerLenLBA) const
 {
     ISO_DESCRIPTOR isoDescriptor{};
 
@@ -636,10 +636,10 @@ void iso::DirTree::WriteIsoDescriptors(const int totalLenLBA) const
     isoDescriptor.pathTable1MSBoffs = SwapBytes32(isoDescriptor.pathTable1MSBoffs);
     isoDescriptor.pathTable2MSBoffs = SwapBytes32(isoDescriptor.pathTable2MSBoffs);
 
-    isoDescriptor.volumeSize = SetPair32(totalLenLBA);
+    isoDescriptor.volumeSize = SetPair32(layerLenLBA);
 
     // Write the descriptor
-    auto isoDescriptorSectors = dvd::writer->GetSectorView(layout::LBA_ISO_PVD, GetSizeInSectors(sizeof(ISO_DESCRIPTOR) * 2));
+    auto isoDescriptorSectors = dvd::writer->GetSectorView(layerBegLBA + layout::LBA_ISO_PVD, GetSizeInSectors(sizeof(ISO_DESCRIPTOR) * 2));
     isoDescriptorSectors->WriteMemory(&isoDescriptor, sizeof(isoDescriptor));
 
     // Write descriptor terminator;
@@ -655,7 +655,7 @@ void iso::DirTree::WriteIsoDescriptors(const int totalLenLBA) const
     // Allocate buffer for path table
     const size_t pathTableSize = static_cast<size_t>(DVD_SECTOR_SIZE) * pathTableSectors;
     auto sectorBuff = std::make_unique<uint8_t[]>(pathTableSize);
-    auto pathTable  = dvd::writer->GetSectorView(layout::LBA_TABLE_START, pathTableSectors * 4);
+    auto pathTable  = dvd::writer->GetSectorView(layerBegLBA + layout::LBA_TABLE_START, pathTableSectors * 4);
 
     // Serialize and write L-path table
     pathTableObj.SerializeTable<false>(sectorBuff.get());
@@ -801,7 +801,7 @@ void iso::DirTree::WriteDirectoryRecords() const
 
     auto WriteDirEntries = [&writeOneEntry](const iso::DirTree *dir, const Entry *parentDir)
     {
-        auto sectorView = dvd::writer->GetSectorView(dir->m_entry->lbaISO, GetSizeInSectors(dir->CalculateDirRecordLen()));
+        auto sectorView = dvd::writer->GetSectorView(layerBegLBA + dir->m_entry->lbaISO, GetSizeInSectors(dir->CalculateDirRecordLen()));
         writeOneEntry(sectorView.get(), *dir->m_entry, false);
         writeOneEntry(sectorView.get(), *parentDir, true);
 
@@ -901,7 +901,7 @@ void iso::WriteExtendedDescriptors()
     SetUdfIdent(tea->stdIdent, VSD_STD_ID_TEA01);
     tea->structVersion = 1;
 
-    auto isoDescriptorSectors = dvd::writer->GetSectorView(layout::LBA_UDF_BRIDGE, GetSizeInSectors(sizeof(buffer)));
+    auto isoDescriptorSectors = dvd::writer->GetSectorView(layerBegLBA + layout::LBA_UDF_BRIDGE, GetSizeInSectors(sizeof(buffer)));
     isoDescriptorSectors->WriteMemory(buffer, sizeof(buffer));
 }
 
@@ -984,7 +984,7 @@ void iso::WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t p
     auto td = reinterpret_cast<terminatingDesc *>(buffer+offsetof(layout::UDF, td));
     SetTag(td, TAG_IDENT_TD, lba + descSeqNum);
 
-    auto udfDescriptorSectors = dvd::writer->GetSectorView(lba, GetSizeInSectors(sizeof(layout::UDF)));
+    auto udfDescriptorSectors = dvd::writer->GetSectorView(layerBegLBA + lba, GetSizeInSectors(sizeof(layout::UDF)));
     udfDescriptorSectors->WriteMemory(buffer, sizeof(buffer));
     udfDescriptorSectors->WriteBlankSectors(GetSizeInSectors(sizeof(layout::UDF::tls)));
 }
@@ -1015,7 +1015,7 @@ void iso::WriteLviDescriptors(const iso::DirTree *dirTree, const uint32_t partit
     auto td = reinterpret_cast<terminatingDesc *>(buffer+offsetof(layout::LVID, td));
     SetTag(td, TAG_IDENT_TD, layout::LBA_LVID_TERM);
 
-    auto lvidDescriptorSectors = dvd::writer->GetSectorView(layout::LBA_LVID, GetSizeInSectors(sizeof(buffer)));
+    auto lvidDescriptorSectors = dvd::writer->GetSectorView(layerBegLBA + layout::LBA_LVID, GetSizeInSectors(sizeof(buffer)));
     lvidDescriptorSectors->WriteMemory(buffer, sizeof(buffer));
 }
 
@@ -1031,21 +1031,21 @@ void iso::WriteAnchorDescriptor(const uint32_t partitionEnd)
     avdp->reserveVolDescSeqExt.extLocation = layout::LBA_UDF_RSRV;
     SetTag(buffer, TAG_IDENT_AVDP, layout::LBA_ANCHOR);
 
-    auto anchorDescriptorSector = dvd::writer->GetSectorView(layout::LBA_ANCHOR, 1);
+    auto anchorDescriptorSector = dvd::writer->GetSectorView(layerBegLBA + layout::LBA_ANCHOR, 1);
     anchorDescriptorSector->WriteMemory(buffer, sizeof(buffer));
 
     // Backup Anchor point
     avdp->descTag.tagChecksum = 0; // reset
     SetTag(buffer, TAG_IDENT_AVDP, partitionEnd);
 
-    anchorDescriptorSector = dvd::writer->GetSectorView(partitionEnd, 1);
+    anchorDescriptorSector = dvd::writer->GetSectorView(layerBegLBA + partitionEnd, 1);
     anchorDescriptorSector->WriteMemory(buffer, sizeof(buffer));
 }
 
 void iso::DirTree::WriteInfoCtrlBlocks(const uint32_t partitionStartLBA)
 {
     auto &entries = GetUnderlyingList();
-    auto sectorView = dvd::writer->GetSectorView(m_entry->lbaICB, entries.size()); // We only supports one sector per entry (AKA, up to 868GiB per entry)
+    auto sectorView = dvd::writer->GetSectorView(layerBegLBA + m_entry->lbaICB, entries.size()); // We only supports one sector per entry (AKA, up to 868GiB per entry)
 
     auto writeOneEntry = [&sectorView, &partitionStartLBA](Entry &entry, const int id) -> void
     {
@@ -1163,7 +1163,7 @@ void iso::DirTree::WriteFileSetDescriptors(const uint32_t partitionStartLBA) con
     auto td = reinterpret_cast<terminatingDesc *>(buffer+offsetof(layout::FSD, td));
     SetTag(td, TAG_IDENT_TD, partitionStartLBA + 1);
 
-    auto fsdDescriptorSectors = dvd::writer->GetSectorView(partitionStartLBA, GetSizeInSectors(sizeof(buffer)));
+    auto fsdDescriptorSectors = dvd::writer->GetSectorView(layerBegLBA + partitionStartLBA, GetSizeInSectors(sizeof(buffer)));
     fsdDescriptorSectors->WriteMemory(buffer, sizeof(buffer));
 }
 
@@ -1214,7 +1214,7 @@ void iso::DirTree::WriteFileIdDescriptors(const uint32_t partitionStartLBA)
         if (entry.type != EntryType::EntryDir)
             continue;
 
-        auto sectorView = dvd::writer->GetSectorView(entry.lba, GetSizeInSectors(entry.size));
+        auto sectorView = dvd::writer->GetSectorView(layerBegLBA + entry.lba, GetSizeInSectors(entry.size));
         writeOneEntry(sectorView.get(), entry, entry.lba, true);
 
         for (const auto it : entry.subdir->GetView())

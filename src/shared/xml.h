@@ -10,6 +10,7 @@ namespace xml
         constexpr const char *ISO_PROJECT = "iso_project";
         constexpr const char *IDENTIFIERS = "identifiers";
         constexpr const char *LICENSE = "license";
+        constexpr const char *LAYER = "layer";
         constexpr const char *DEFAULT_ATTRIBUTES = "default_attributes";
         constexpr const char *DIRECTORY_TREE = "directory_tree";
         constexpr const char *DIR = "dir";

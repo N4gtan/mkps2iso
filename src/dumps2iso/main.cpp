@@ -54,7 +54,7 @@ static std::unique_ptr<ISO_LICENSE> ReadLicense()
 static void SaveLicense(const ISO_LICENSE &license)
 {
     if (!param::quietMode)
-        printf("\nCreating license data...");
+        printf("Creating license data...");
 
     unique_file outFile = OpenScopedFile(param::outPath / DEFAULT_LICENSE_NAME, "wb");
 
@@ -93,7 +93,7 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
             exit(EXIT_FAILURE);
         }
 
-        memcpy(outFile.GetView(0, entry.size).GetBuffer(), dvd::reader->GetSectorView(entry.lba, GetSizeInSectors(entry.size)).GetBuffer(), entry.size);
+        memcpy(outFile.GetView(0, entry.size).GetBuffer(), dvd::reader->GetSectorView(iso::layerBegLBA + entry.lba, GetSizeInSectors(entry.size)).GetBuffer(), entry.size);
 
         if (!param::quietMode)
             printf("Done.\n");
@@ -269,74 +269,97 @@ static void ParseISO()
         printf("\n");
 
         if (!param::noXml)
-            printf("\nLicense file: \"%s\"\n", (param::outPath / DEFAULT_LICENSE_NAME).string().c_str());
-
-        printf("\nParsing directory tree...\n");
+            printf("License file: \"%s\"\n\n", (param::outPath / DEFAULT_LICENSE_NAME).string().c_str());
     }
 
-    std::list<Entry> entries;
-    Entry &rootDir = [&]() -> Entry &
+    std::list<std::tuple<std::list<Entry>, uint32_t, uint32_t>> layers;
+    while (true)
     {
-        if (!param::iso)
-            return iso::ParseRoot<true>(entries, layout::LBA_ANCHOR, nullptr);
+        if (!param::quietMode)
+            printf("Parsing Layer%zu directory tree...\n", layers.size());
 
-        if (!param::pathTable)
-            return iso::ParseRoot<false>(entries, iso::descriptor.rootDirRecord.entryOffs.lsb, nullptr);
-
-        iso::PathTable pathTable(iso::descriptor.pathTable1Offs, iso::descriptor.pathTableSize.lsb);
-        if (pathTable.entries[0].data.dirOffs != iso::descriptor.rootDirRecord.entryOffs.lsb)
+        auto &[entries, layerLenLBA, postGap] = layers.emplace_back();
+        Entry &rootDir = [&]() -> Entry &
         {
-            printf("\nERROR: Root directory offset in path table does not match the one in volume descriptor.\n"
-                    "       The ISO image may be corrupt or invalid.\n");
-            exit(EXIT_FAILURE);
-        }
-        return iso::ParseRoot<false>(entries, iso::descriptor.rootDirRecord.entryOffs.lsb, &pathTable.entries);
-    }();
+            if (!param::iso)
+                return iso::ParseRoot<true>(entries, layout::LBA_ANCHOR, nullptr);
 
-    // Sort files by LBA for "strict" output
-    entries.sort([](const auto &left, const auto &right)
-                 { return left.lba < right.lba; });
+            if (!param::pathTable)
+                return iso::ParseRoot<false>(entries, iso::descriptor.rootDirRecord.entryOffs.lsb, nullptr);
 
-    const uint32_t totalLenLBA = iso::descriptor.volumeSize.lsb;
+            iso::PathTable pathTable(iso::descriptor.pathTable1Offs, iso::descriptor.pathTableSize.lsb);
+            if (pathTable.entries[0].data.dirOffs != iso::descriptor.rootDirRecord.entryOffs.lsb)
+            {
+                printf("\nERROR: Root directory offset in path table does not match the one in volume descriptor.\n"
+                        "       The ISO image may be corrupt or invalid.\n");
+                exit(EXIT_FAILURE);
+            }
+            return iso::ParseRoot<false>(entries, iso::descriptor.rootDirRecord.entryOffs.lsb, &pathTable.entries);
+        }();
 
-    // PostGap sanity checks
-    uint32_t postGap = totalLenLBA - (entries.back().lba + GetSizeInSectors(entries.back().size));
-    if (postGap == 0)
-    {
-        if (!param::noWarns)
-            printf("WARNING: The UDF image does not have a trailing Anchor, it may be corrupt or invalid.\n");
-    }
-    else
-    {
-        postGap -= GetSizeInSectors(sizeof(anchorVolDescPtr));
-        if (AlignTo<16>(totalLenLBA - GetSizeInSectors(sizeof(anchorVolDescPtr))) != totalLenLBA)
+        // Sort files by LBA for "strict" output
+        entries.sort([](const auto &left, const auto &right)
+                     { return left.lba < right.lba; });
+
+        layerLenLBA = iso::descriptor.volumeSize.lsb;
+
+        // PostGap sanity checks
+        postGap = layerLenLBA - (entries.back().lba + GetSizeInSectors(entries.back().size));
+        if (postGap == 0)
         {
             if (!param::noWarns)
-                printf("WARNING: The UDF image is not aligned.\n");
+                printf("WARNING: The UDF image does not have a trailing Anchor, it may be corrupt or invalid.\n");
         }
         else
         {
-            postGap &= ~15u; // Aligns down to the nearest multiple of 16
-            constexpr uint32_t SECTORS_PER_MIB = DVD_SECTOR_SIZE / 4;
-            if (postGap != (20 * SECTORS_PER_MIB) && postGap != 0 && !param::noWarns)
-                printf("WARNING: Size of postgap is of %.2fMiB instead of 20MiB.\n", static_cast<double>(postGap) / SECTORS_PER_MIB);
+            postGap -= GetSizeInSectors(sizeof(anchorVolDescPtr));
+            if (AlignTo<16>(layerLenLBA - GetSizeInSectors(sizeof(anchorVolDescPtr))) != layerLenLBA)
+            {
+                if (!param::noWarns)
+                    printf("WARNING: The UDF image is not aligned.\n");
+            }
+            else
+            {
+                postGap &= ~15u; // Aligns down to the nearest multiple of 16
+                constexpr uint32_t SECTORS_PER_MIB = DVD_SECTOR_SIZE / 4;
+                if (postGap != (20 * SECTORS_PER_MIB) && postGap != 0 && !param::noWarns)
+                    printf("WARNING: Size of postgap is of %.2fMiB instead of 20MiB.\n", static_cast<double>(postGap) / SECTORS_PER_MIB);
+            }
         }
-    }
 
-    // Prepare output directories
-    size_t numDirs = 0;
-    CreateDirs(rootDir, numDirs);
+        // Prepare output directories
+        size_t numDirs = 0;
+        CreateDirs(rootDir, numDirs);
+
+        if (!param::quietMode)
+        {
+            printf("  Files Total: %zu\n", entries.size()-1 - numDirs);
+            printf("  Directories: %zu\n", numDirs);
+            printf("  Total file system size: %ju bytes (%u sectors)\n\n", static_cast<uintmax_t>(layerLenLBA) * DVD_SECTOR_SIZE, layerLenLBA);
+        }
+
+        if ((iso::layerBegLBA += layerLenLBA) >= dvd::reader->GetTotalSectors() || !dvd::reader->SeekToSector(iso::layerBegLBA))
+            break;
+
+        if (dvd::reader->ReadBytes<true>(&iso::descriptor, DVD_SECTOR_SIZE) != DVD_SECTOR_SIZE || memcmp(&iso::descriptor.header, "\1" VSD_STD_ID_CD001 "\1", 7) != 0)
+        {
+            printf("ERROR: Layer%zu does not contain a valid ISO9660 file system.\n", layers.size());
+            exit(EXIT_FAILURE);
+        }
+        iso::layerBegLBA -= layout::LBA_ISO_PVD;
+    }
 
     if (!param::quietMode)
+        printf("Unpacking...\n");
+
+    iso::layerBegLBA = 0;
+    for (const auto &[entries, layerLenLBA, _] : layers)
     {
-        printf("  Files Total: %zu\n", entries.size()-1 - numDirs);
-        printf("  Directories: %zu\n", numDirs);
-        printf("  Total file system size: %u bytes (%u sectors)\n", totalLenLBA * DVD_SECTOR_SIZE, totalLenLBA);
-
-        printf("\nUnpacking...\n");
+        ExtractFiles(entries, param::outPath);
+        iso::layerBegLBA += layerLenLBA - layout::LBA_ISO_PVD;
     }
-
-    ExtractFiles(entries, param::outPath);
+    if (!param::quietMode)
+        printf("\n");
 
     if (!param::noXml)
     {
@@ -344,17 +367,24 @@ static void ParseISO()
         if (!param::quietMode)
             printf("Creating XML document...");
 
-        const uint32_t currentLBA = xml::Writer().WriteHeaders(DEFAULT_LICENSE_NAME)->WriteDirTree(entries, postGap);
+        xml::Writer xml;
+        xml.WriteHeaders(DEFAULT_LICENSE_NAME);
+
+        uint32_t currentLBA = 0;
+        for (const auto &[entries, _, postGap] : layers)
+        {
+            currentLBA += AlignTo<16>(xml.WriteDirTree(entries, postGap)) - layout::LBA_ISO_PVD;
+        }
 
         if (!param::quietMode)
             printf(" Ok.\n\n");
 
         // Check if there is still an EoF gap
-        if (!param::noWarns && AlignTo<16>(currentLBA) < totalLenLBA)
+        if (!param::noWarns && currentLBA < iso::layerBegLBA)
         {
             printf("WARNING: There is still a gap of %u sectors at the end of file system.\n"
                    "\t This could mean that there are missing files.\n"
-                   "\t Try using the -pt command, helps with obfuscated file systems.\n", totalLenLBA - currentLBA);
+                   "\t Try using the -pt command, helps with obfuscated file systems.\n", iso::layerBegLBA - currentLBA);
         }
     }
 
@@ -507,7 +537,8 @@ int Main(int argc, char *argv[])
     }
 
     // Check if file has a valid ISO9660 header
-    if (!dvd::reader->SeekToSector(16) || !dvd::reader->ReadBytes<true>(&iso::descriptor, DVD_SECTOR_SIZE) || memcmp(&iso::descriptor.header, "\1" VSD_STD_ID_CD001 "\1", 7) != 0)
+    if (!dvd::reader->SeekToSector(16) ||
+        dvd::reader->ReadBytes<true>(&iso::descriptor, DVD_SECTOR_SIZE) != DVD_SECTOR_SIZE || memcmp(&iso::descriptor.header, "\1" VSD_STD_ID_CD001 "\1", 7) != 0)
     {
         printf("ERROR: File does not contain a valid ISO9660 file system.\n");
         return EXIT_FAILURE;

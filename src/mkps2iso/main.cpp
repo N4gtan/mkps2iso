@@ -17,7 +17,7 @@ namespace param
     std::optional<std::string> volid_override;
 };
 
-static void WriteLogLBA(iso::DirTree *dirTree)
+static void WriteLogLBA(const std::list<std::tuple<std::list<Entry>, uint32_t, uint32_t>> &layers)
 {
     unique_file fp = OpenScopedFile(param::lbaFile, "w");
     if (fp != nullptr)
@@ -26,11 +26,19 @@ static void WriteLogLBA(iso::DirTree *dirTree)
         fprintf(fp.get(), "Image file: \"%s\"\n", param::isoFile.string().c_str());
 
         fprintf(fp.get(), "\nFile System:\n\n");
-        fprintf(fp.get(), "   Type   |              Name              | Length |  LBA  |   Bytes   |   Source File\n\n");
+        fprintf(fp.get(), "   Type   |              Name              | Length |  LBA  |   Bytes   |   Source File\n");
 
-        dirTree->SortDirectoryEntries(true);
-        dirTree->OutputLBAlisting(fp.get(), 0);
-        dirTree->SortDirectoryEntries();
+        int layer = 0;
+        iso::layerBegLBA = 0;
+        for (const auto &[entries, layerLenLBA, _] : layers)
+        {
+            fprintf(fp.get(), "\n    Layer%d:\n", layer++);
+            iso::DirTree *dirTree = entries.front().subdir.get();
+            dirTree->SortDirectoryEntries(true);
+            dirTree->OutputLBAlisting(fp.get(), 0);
+            dirTree->SortDirectoryEntries();
+            iso::layerBegLBA += layerLenLBA - layout::LBA_ISO_PVD;
+        }
 
         if (!param::quietMode)
             printf("Wrote file LBA log \"%s\"\n\n", param::lbaFile.string().c_str());
@@ -41,7 +49,7 @@ static void WriteLogLBA(iso::DirTree *dirTree)
     }
 }
 
-static void WriteLogHead(iso::DirTree *dirTree)
+static void WriteLogHead(const std::list<std::tuple<std::list<Entry>, uint32_t, uint32_t>> &layers)
 {
     unique_file fp = OpenScopedFile(param::lbaHeadFile, "w");
     if (fp != nullptr)
@@ -49,9 +57,17 @@ static void WriteLogHead(iso::DirTree *dirTree)
         fprintf(fp.get(), "#ifndef _ISO_FILES\n");
         fprintf(fp.get(), "#define _ISO_FILES\n\n");
 
-        dirTree->SortDirectoryEntries(true);
-        dirTree->OutputHeaderListing(fp.get(), "<ROOT>");
-        dirTree->SortDirectoryEntries();
+        int layer = 0;
+        iso::layerBegLBA = 0;
+        for (const auto &[entries, layerLenLBA, _] : layers)
+        {
+            fprintf(fp.get(), "/* LAYER%d */\n", layer++);
+            iso::DirTree *dirTree = entries.front().subdir.get();
+            dirTree->SortDirectoryEntries(true);
+            dirTree->OutputHeaderListing(fp.get(), "<ROOT>");
+            dirTree->SortDirectoryEntries();
+            iso::layerBegLBA += layerLenLBA - layout::LBA_ISO_PVD;
+        }
         fprintf(fp.get(), "#endif\n");
 
         if (!param::quietMode)
@@ -123,42 +139,53 @@ static bool BuildISO(xml::Reader &xml)
             printf("WARNING: Specified license file may not be of correct format.\n");
     }
 
-    // Parse directory entries in the <directory_tree> element
-    if (!param::quietMode)
-        printf("Parsing directory tree...\n");
-
-    // Generate file system
-    std::list<Entry> entries;
-    iso::DirTree *dirTree = xml.ReadDirTree(entries, isoIdentifiers.CreationDate);
-    if (dirTree == nullptr)
-        return EXIT_FAILURE;
-
-    // Sort entries
-    dirTree->PartitionEntries();
-    dirTree->SortDirectoryEntries();
-    dirTree->SaveDirEntriesOrder();
-
-    // Calculate tree LBAs
-    const uint32_t pathTableLen      = dirTree->CalculatePathTableLen(entries.front());
-    const uint32_t isoRootLBA        = layout::LBA_TABLE_START + (GetSizeInSectors(pathTableLen) * 4);
-    const uint32_t partitionStartLBA = dirTree->CalculateDirRecordLBA(isoRootLBA);
-    const uint32_t fidRootLBA        = partitionStartLBA + GetSizeInSectors(sizeof(layout::FSD));
-    const uint32_t icbRootLBA        = dirTree->CalculateFileIdDescLBA(fidRootLBA);
-    const uint32_t dataStartLBA      = dirTree->CalculateInfCtrlBlockLBA(icbRootLBA);
-    const uint32_t totalLenLBA       = AlignTo<16>(dirTree->CalculateFileTreeLBA(dataStartLBA) + GetSizeInSectors(sizeof(anchorVolDescPtr)));
-
-    if (!param::quietMode)
+    std::list<std::tuple<std::list<Entry>, uint32_t, uint32_t>> layers;
+    while (xml.NextLayerElement())
     {
-        printf("  Files Total: %u\n", dirTree->GetFileCount());
-        printf("  Directories: %u\n", dirTree->GetDirCount());
-        printf("  Total file system size: %u bytes (%u sectors)\n\n", DVD_SECTOR_SIZE * totalLenLBA, totalLenLBA);
+        // Parse directory entries in the <directory_tree> element
+        if (!param::quietMode)
+            printf("Parsing Layer%zu directory tree...\n", layers.size());
+
+        // Generate file system
+        auto &[entries, layerLenLBA, partitionStartLBA] = layers.emplace_back();
+        iso::DirTree *dirTree = xml.ReadDirTree(entries);
+        if (dirTree == nullptr)
+            return false;
+
+        // Sort entries
+        dirTree->PartitionEntries();
+        dirTree->SortDirectoryEntries();
+        dirTree->SaveDirEntriesOrder();
+
+        // Calculate tree LBAs
+        const uint32_t pathTableLen = dirTree->CalculatePathTableLen(entries.front());
+        const uint32_t isoRootLBA   = layout::LBA_TABLE_START + (GetSizeInSectors(pathTableLen) * 4);
+        partitionStartLBA           = dirTree->CalculateDirRecordLBA(isoRootLBA);
+        const uint32_t fidRootLBA   = partitionStartLBA + GetSizeInSectors(sizeof(layout::FSD));
+        const uint32_t icbRootLBA   = dirTree->CalculateFileIdDescLBA(fidRootLBA);
+        const uint32_t dataStartLBA = dirTree->CalculateInfCtrlBlockLBA(icbRootLBA);
+        layerLenLBA                 = AlignTo<16>(dirTree->CalculateFileTreeLBA(dataStartLBA) + GetSizeInSectors(sizeof(anchorVolDescPtr)));
+
+        if (!param::quietMode)
+        {
+            printf("  Files Total: %u\n", dirTree->GetFileCount());
+            printf("  Directories: %u\n", dirTree->GetDirCount());
+            printf("  Total file system size: %ju bytes (%u sectors)\n\n", static_cast<uintmax_t>(layerLenLBA) * DVD_SECTOR_SIZE, layerLenLBA);
+        }
+        iso::layerBegLBA += layerLenLBA - layout::LBA_ISO_PVD;
+    }
+
+    if (layers.empty())
+    {
+        printf("Error: No <%s> element found in XML.\n", xml::elem::LAYER);
+        return false;
     }
 
     if (!param::lbaFile.empty())
-        WriteLogLBA(dirTree);
+        WriteLogLBA(layers);
 
     if (!param::lbaHeadFile.empty())
-        WriteLogHead(dirTree);
+        WriteLogHead(layers);
 
     if (param::noIsoGen)
     {
@@ -177,7 +204,7 @@ static bool BuildISO(xml::Reader &xml)
     }
 
     // Create ISO image for writing
-    if (!dvd::writer->Create(param::isoFile, totalLenLBA))
+    if (!dvd::writer->Create(param::isoFile, iso::layerBegLBA + layout::LBA_ISO_PVD))
     {
         printf("ERROR: Cannot open or create output image file.\n");
         return false;
@@ -187,9 +214,13 @@ static bool BuildISO(xml::Reader &xml)
     if (!param::quietMode)
         printf("Repacking...\n");
 
-    // Copy the files into the disc image
-    dirTree->WriteFiles();
-
+    iso::layerBegLBA = 0;
+    for (const auto &[entries, layerLenLBA, _] : layers)
+    {
+        // Copy the files into the disc image
+        entries.front().subdir.get()->WriteFiles();
+        iso::layerBegLBA += layerLenLBA - layout::LBA_ISO_PVD;
+    }
     if (!param::quietMode)
         printf("\n");
 
@@ -227,25 +258,32 @@ static bool BuildISO(xml::Reader &xml)
     if (!param::quietMode)
         printf("Writing descriptors... ");
 
-    // Write ISO descriptors
-    dirTree->WriteIsoDescriptors(totalLenLBA);
-    dirTree->WriteDirectoryRecords();
+    iso::layerBegLBA = 0;
+    for (const auto &[entries, layerLenLBA, partitionStartLBA] : layers)
+    {
+        iso::DirTree *dirTree = entries.front().subdir.get();
 
-    // Write Extended Area Descriptors
-    iso::WriteExtendedDescriptors();
+        // Write ISO descriptors
+        dirTree->WriteIsoDescriptors(layerLenLBA);
+        dirTree->WriteDirectoryRecords();
 
-    // Write UDF descriptors
-    uint32_t partitionSize = totalLenLBA - GetSizeInSectors(sizeof(anchorVolDescPtr)) - partitionStartLBA;
-    iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, layout::LBA_UDF_MAIN);
-    iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, layout::LBA_UDF_RSRV);
-    iso::WriteLviDescriptors(dirTree, partitionSize);
-    iso::WriteAnchorDescriptor(partitionStartLBA + partitionSize);
+        // Write Extended Area Descriptors
+        iso::WriteExtendedDescriptors();
 
-    // Write file system descriptors to finish the image
-    dirTree->WriteInfoCtrlBlocks(partitionStartLBA);
-    dirTree->WriteFileSetDescriptors(partitionStartLBA);
-    dirTree->WriteFileIdDescriptors(partitionStartLBA);
+        // Write UDF descriptors
+        uint32_t partitionSize = layerLenLBA - GetSizeInSectors(sizeof(anchorVolDescPtr)) - partitionStartLBA;
+        iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, layout::LBA_UDF_MAIN);
+        iso::WriteUdfDescriptors(partitionStartLBA, partitionSize, layout::LBA_UDF_RSRV);
+        iso::WriteLviDescriptors(dirTree, partitionSize);
+        iso::WriteAnchorDescriptor(partitionStartLBA + partitionSize);
 
+        // Write file system descriptors to finish the layer
+        dirTree->WriteInfoCtrlBlocks(partitionStartLBA);
+        dirTree->WriteFileSetDescriptors(partitionStartLBA);
+        dirTree->WriteFileIdDescriptors(partitionStartLBA);
+
+        iso::layerBegLBA += layerLenLBA - layout::LBA_ISO_PVD;
+    }
     if (!param::quietMode)
         printf("Ok.\n\n");
 

@@ -37,6 +37,7 @@ namespace iso
         static std::optional<Entry> ReadEntryISO();
         static std::optional<Entry> ReadEntryUDF();
     };
+    inline uint32_t layerBegLBA;
     inline ISO_DESCRIPTOR descriptor;
 
     template <bool udf>
