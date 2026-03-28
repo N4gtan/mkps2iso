@@ -315,10 +315,10 @@ static void WriteXMLByDirectories(const iso::DirTree *directory, tinyxml2::XMLEl
 uint32_t xml::Writer::WriteDirTree(const std::list<Entry> &entries, const uint32_t postGap)
 {
     // Create <layer> element
-    tinyxml2::XMLElement *layerElement = m_projectElement->InsertNewChildElement(xml::elem::LAYER);
+    tinyxml2::XMLElement *layerElement = m_projectElement->InsertNewChildElement(elem::LAYER);
 
     // Create <default_attributes> now so it lands before the <directory_tree>
-    tinyxml2::XMLElement *defaultAttributesElement = layerElement->InsertNewChildElement(xml::elem::DEFAULT_ATTRIBUTES);
+    tinyxml2::XMLElement *defaultAttributesElement = layerElement->InsertNewChildElement(elem::DEFAULT_ATTRIBUTES);
 
     const Entry &root = entries.front();
     tinyxml2::XMLElement *directoryTreeElement = WriteXMLEntry(root, layerElement);
@@ -344,30 +344,30 @@ uint32_t xml::Writer::WriteDirTree(const std::list<Entry> &entries, const uint32
 
 xml::Writer *xml::Writer::WriteHeaders(std::string_view serial, std::string_view region)
 {
-    m_projectElement = static_cast<tinyxml2::XMLElement *>(m_xmlDoc.InsertFirstChild(m_xmlDoc.NewElement(xml::elem::ISO_PROJECT)));
-    m_projectElement->SetAttribute(xml::attrib::IMAGE_NAME, "mkps2iso.iso");
+    m_projectElement = static_cast<tinyxml2::XMLElement *>(m_xmlDoc.InsertFirstChild(m_xmlDoc.NewElement(elem::ISO_PROJECT)));
+    m_projectElement->SetAttribute(attrib::IMAGE_NAME, "mkps2iso.iso");
     m_projectElement->SetAttribute(attrib::SERIAL, serial.data());
     m_projectElement->SetAttribute(attrib::REGION, region.data());
 
     {
-        tinyxml2::XMLElement *newElement = m_projectElement->InsertNewChildElement(xml::elem::IDENTIFIERS);
+        tinyxml2::XMLElement *newElement = m_projectElement->InsertNewChildElement(elem::IDENTIFIERS);
         auto setAttributeIfNotEmpty = [newElement](const char *name, std::string_view value)
         {
             if (!value.empty())
                 newElement->SetAttribute(name, std::string(value).c_str());
         };
 
-        setAttributeIfNotEmpty(xml::attrib::SYSTEM_ID, CleanDescElement(iso::descriptor.systemID));
-        setAttributeIfNotEmpty(xml::attrib::APPLICATION, CleanDescElement(iso::descriptor.applicationIdentifier));
-        setAttributeIfNotEmpty(xml::attrib::VOLUME_ID, CleanDescElement(iso::descriptor.volumeID));
-        setAttributeIfNotEmpty(xml::attrib::VOLUME_SET, CleanDescElement(iso::descriptor.volumeSetIdentifier));
-        setAttributeIfNotEmpty(xml::attrib::PUBLISHER, CleanDescElement(iso::descriptor.publisherIdentifier));
-        setAttributeIfNotEmpty(xml::attrib::DATA_PREPARER, CleanDescElement(iso::descriptor.dataPreparerIdentifier));
-        setAttributeIfNotEmpty(xml::attrib::COPYRIGHT, CleanDescElement(iso::descriptor.copyrightFileIdentifier));
-        setAttributeIfNotEmpty(xml::attrib::CREATION_DATE, LongDateToString(iso::descriptor.volumeCreateDate).c_str());
+        setAttributeIfNotEmpty(attrib::SYSTEM_ID, CleanDescElement(iso::descriptor.systemID));
+        setAttributeIfNotEmpty(attrib::APPLICATION, CleanDescElement(iso::descriptor.applicationIdentifier));
+        setAttributeIfNotEmpty(attrib::VOLUME_ID, CleanDescElement(iso::descriptor.volumeID));
+        setAttributeIfNotEmpty(attrib::VOLUME_SET, CleanDescElement(iso::descriptor.volumeSetIdentifier));
+        setAttributeIfNotEmpty(attrib::PUBLISHER, CleanDescElement(iso::descriptor.publisherIdentifier));
+        setAttributeIfNotEmpty(attrib::DATA_PREPARER, CleanDescElement(iso::descriptor.dataPreparerIdentifier));
+        setAttributeIfNotEmpty(attrib::COPYRIGHT, CleanDescElement(iso::descriptor.copyrightFileIdentifier));
+        setAttributeIfNotEmpty(attrib::CREATION_DATE, LongDateToString(iso::descriptor.volumeCreateDate).c_str());
         // Set only if not zero
         if (auto ZERO_DATE = GetUnspecifiedLongDate(); memcmp(&iso::descriptor.volumeModifyDate, &ZERO_DATE, sizeof(iso::descriptor.volumeModifyDate)) != 0)
-            setAttributeIfNotEmpty(xml::attrib::MODIFICATION_DATE, LongDateToString(iso::descriptor.volumeModifyDate).c_str());
+            setAttributeIfNotEmpty(attrib::MODIFICATION_DATE, LongDateToString(iso::descriptor.volumeModifyDate).c_str());
     }
 
     const fs::path outPath = fs::absolute(param::outPath).lexically_normal();

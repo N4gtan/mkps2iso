@@ -308,14 +308,14 @@ tinyxml2::XMLElement *xml::Reader::NextLayerElement()
     if (m_layerElement == nullptr)
     {
         // First call: Check if there is a <layer> element
-        m_layerElement = m_projectElement->FirstChildElement(xml::elem::LAYER);
+        m_layerElement = m_projectElement->FirstChildElement(elem::LAYER);
         if (m_layerElement == nullptr)
             printf("ERROR: Cannot find <layer> element in XML document.\n");
     }
     else
     {
         // Subsequent calls: get the next sibling
-        m_layerElement = m_layerElement->NextSiblingElement(xml::elem::LAYER);
+        m_layerElement = m_layerElement->NextSiblingElement(elem::LAYER);
     }
 
     return m_layerElement;
@@ -326,7 +326,7 @@ tinyxml2::XMLElement *xml::Reader::NextProjectElement()
     if (m_projectElement == nullptr)
     {
         // First call: Check if there is an <iso_project> element
-        m_projectElement = m_xmlDoc.FirstChildElement(xml::elem::ISO_PROJECT);
+        m_projectElement = m_xmlDoc.FirstChildElement(elem::ISO_PROJECT);
         if (m_projectElement == nullptr)
         {
             printf("ERROR: Cannot find <iso_project> element in XML document.\n");
@@ -334,7 +334,7 @@ tinyxml2::XMLElement *xml::Reader::NextProjectElement()
         else if (param::isoFile.empty())
         {
             // Check if image_name attribute is specified
-            if (const char *image_name = m_projectElement->Attribute(xml::attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
+            if (const char *image_name = m_projectElement->Attribute(attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
                 param::isoFile = image_name;
             else
                (param::isoFile = param::xmlFile.stem()) += ".iso"; // Use file name of XML project as the image file name
@@ -343,11 +343,11 @@ tinyxml2::XMLElement *xml::Reader::NextProjectElement()
     else
     {
         // Subsequent calls: get the next sibling
-        m_projectElement = m_projectElement->NextSiblingElement(xml::elem::ISO_PROJECT);
+        m_projectElement = m_projectElement->NextSiblingElement(elem::ISO_PROJECT);
         if (m_projectElement != nullptr)
         {
             // Check if image_name attribute is specified
-            if (const char *image_name = m_projectElement->Attribute(xml::attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
+            if (const char *image_name = m_projectElement->Attribute(attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
             {
                 param::isoFile = image_name;
             }
