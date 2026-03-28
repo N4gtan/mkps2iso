@@ -13,7 +13,7 @@ namespace param
     fs::path isoFile;
     fs::path lbaFile;
     fs::path lbaHeadFile;
-    fs::path licenseFile;
+    fs::path logoRawFile;
     std::optional<std::string> volid_override;
 };
 
@@ -79,9 +79,34 @@ static void WriteLogHead(const std::list<std::tuple<std::list<Entry>, uint32_t, 
     }
 }
 
+static void genCipherHashes(const char *serial, int &key, int &magic1, int &magic2)
+{
+    uint32_t letters = 0;
+    uint32_t numbers = 0;
+
+    // Pack ASCII code in reverse order
+    for (int i = 0; *serial != 0 && i < 4; ++i, ++serial)
+        letters |= static_cast<uint32_t>(*serial) << (21 - (i * 7));
+
+    // Skip hyphen character
+    if (*serial == '-' || *serial == '_')
+        ++serial;
+
+    // Parse string as a Base-10 integer
+    for (int i = 0; *serial != 0 && i < 5; ++i, ++serial)
+        numbers = (numbers * 10) + (*serial - '0');
+
+    // Hash generation logic
+    key    = ((numbers <<  3) & 0xF8) | ((letters >> 25) & 0x07);
+    magic1 = ( numbers >> 10        ) | ( letters <<  7);
+    magic2 = ((numbers >>  2) & 0xF8) | 0x04;
+}
+
 static bool BuildISO(xml::Reader &xml)
 {
-    if (xml.ReadHeaders() == nullptr)
+    std::string serial;
+    const char *region;
+    if (xml.ReadHeaders(serial, region) == nullptr)
         return false;
 
     if (param::volid_override)
@@ -126,17 +151,10 @@ static bool BuildISO(xml::Reader &xml)
             printf("  Modification Date : %s\n", iso::isoIdentifiers.ModificationDate);
 
         printf("\n");
-    }
 
-    // If empty, blank sectors will be written.
-    if (!param::licenseFile.empty())
-    {
-        if (!param::quietMode)
-            printf("License file: \"%s\"\n\n", param::licenseFile.string().c_str());
-
-        int64_t licenseSize = GetSize(param::licenseFile);
-        if (licenseSize != sizeof(ISO_LICENSE) && !param::noWarns)
-            printf("WARNING: Specified license file may not be of correct format.\n");
+        // If empty, blank sectors will be written.
+        if (!param::logoRawFile.empty())
+            printf("Logo file: \"%s\"\n\n", param::logoRawFile.string().c_str());
     }
 
     std::list<std::tuple<std::list<Entry>, uint32_t, uint32_t>> layers;
@@ -224,31 +242,18 @@ static bool BuildISO(xml::Reader &xml)
     if (!param::quietMode)
         printf("\n");
 
-    // Write license data
-    if (!param::licenseFile.empty())
-    {
-        unique_file fp = OpenScopedFile(param::licenseFile, "rb");
-        if (fp == nullptr)
-            goto write_blank_license;
+    // Generate encryption hashes from serial
+    int key, magic1, magic2;
+    genCipherHashes(serial.c_str(), key, magic1, magic2);
 
-        auto license = std::make_unique<ISO_LICENSE>();
-        if (fread(license->data, sizeof(license->data), 1, fp.get()) != 1)
-            goto write_blank_license;
+    // Write logo data
+    if (!param::quietMode)
+        printf("Writing logo data...");
 
-        if (!param::quietMode)
-            printf("Writing license data...");
+    iso::WriteLogoData(region, key);
 
-        iso::WriteLicenseData(license->data);
-
-        if (!param::quietMode)
-            printf("Ok.\n");
-    }
-    else
-    {
-    write_blank_license:
-        auto appBlankSectors = dvd::writer->GetSectorView(0, 14);
-        appBlankSectors->WriteBlankSectors(14);
-    }
+    if (!param::quietMode)
+        printf("Ok.\n");
 
     // Master Disc sectors
     auto masterSectors = dvd::writer->GetSectorView(14, 2);
@@ -309,8 +314,8 @@ int Main(int argc, char *argv[])
         "  -l|--lba <file>\tGenerate a log of file LBA locations in disc image\n"
         "  -lh|--lbahead <file>\tGenerate a C header of file LBA locations in disc image\n"
         "  -o|--output <file>\tSpecify output file (overrides image_name attribute)\n"
-        "  -L|--license <file>\tSpecify license file (overrides file attribute)\n"
-        "  -lb|--label\t\tSpecify volume ID (overrides volume element)\n"
+        "  -L|--logo <file>\tSpecify boot logo file (overrides file attribute)\n"
+        "  -lb|--label <name>\tSpecify volume ID (overrides volume element)\n"
         "  -y\t\t\tAlways overwrite ISO image files\n";
 
     constexpr const char *VERSION_TEXT =
@@ -385,9 +390,9 @@ int Main(int argc, char *argv[])
                 OutputOverride = true;
                 continue;
             }
-            if (auto output = ParsePathArgument(args, "L", "license"); output.has_value())
+            if (auto output = ParsePathArgument(args, "L", "logo"); output.has_value())
             {
-                param::licenseFile = output->lexically_normal();
+                param::logoRawFile = output->lexically_normal();
                 continue;
             }
             if (auto label = ParseStringArgument(args, "lb", "label"); label.has_value())

@@ -1,11 +1,10 @@
 #include "xmlreader.h"
-#include "platform.h"
 
 namespace param
 {
     extern fs::path xmlFile;
     extern fs::path isoFile;
-    extern fs::path licenseFile;
+    extern fs::path logoRawFile;
 };
 
 namespace global
@@ -216,8 +215,15 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries)
     return dirTree;
 }
 
-xml::Reader *xml::Reader::ReadHeaders()
+xml::Reader *xml::Reader::ReadHeaders(std::string &serial, const char *&region)
 {
+    region = m_projectElement->Attribute(attrib::REGION);
+    if (const char *str = m_projectElement->Attribute(attrib::SERIAL); str == nullptr || *str == 0)
+        printf("Error: <iso_project> attribute \"serial\" is missing or blank on line %d.\n", m_projectElement->GetLineNum());
+    else
+        for (; *str != 0; ++str)
+            serial += std::toupper(static_cast<uint8_t>(*str));
+
     // Set file system identifiers
     if (const tinyxml2::XMLElement *identifierElement = m_projectElement->FirstChildElement(elem::IDENTIFIERS))
     {
@@ -266,38 +272,32 @@ xml::Reader *xml::Reader::ReadHeaders()
         }
     }
 
-    // Check for license file
-    bool gotLicFromXML = false;
-    const tinyxml2::XMLElement *licenseElement = m_projectElement->FirstChildElement(elem::LICENSE);
-    if (param::licenseFile.empty() && licenseElement != nullptr)
+    // Check for logo file
+    bool gotLogoFromXML = false;
+    const tinyxml2::XMLElement *logoElement = m_projectElement->FirstChildElement(elem::LOGO);
+    if (param::logoRawFile.empty() && logoElement != nullptr)
     {
-        const char *license_file_attrib = licenseElement->Attribute(attrib::LICENSE_FILE);
+        const char *logo_file_attrib = logoElement->Attribute(attrib::LOGO_FILE);
 
-        if (license_file_attrib == nullptr || *license_file_attrib == 0)
+        if (logo_file_attrib == nullptr || *logo_file_attrib == 0)
         {
-            printf("ERROR: File attribute of <license> element is missing or blank on line %d.\n", licenseElement->GetLineNum());
+            printf("ERROR: <logo> attribute \"file\" is missing or blank on line %d.\n", logoElement->GetLineNum());
             return nullptr;
         }
 
-        param::licenseFile = (param::xmlFile.parent_path() / license_file_attrib).lexically_normal();
-        gotLicFromXML = true;
+        param::logoRawFile = (param::xmlFile.parent_path() / logo_file_attrib).lexically_normal();
+        gotLogoFromXML = true;
     }
 
-    if (!param::licenseFile.empty())
+    if (!param::logoRawFile.empty() && OpenScopedFile(param::logoRawFile, "rb") == nullptr)
     {
-        int64_t licenseSize = GetSize(param::licenseFile);
+        printf("ERROR: Specified logo file ");
 
-        if (licenseSize < 0)
-        {
-            printf("ERROR: Specified license file ");
+        if (gotLogoFromXML)
+            printf("(on line %d) ", logoElement->GetLineNum());
 
-            if (gotLicFromXML)
-                printf("(on line %d) ", licenseElement->GetLineNum());
-
-            printf("not found.\n");
-
-            return nullptr;
-        }
+        printf("not found.\n");
+        return nullptr;
     }
 
     return this;

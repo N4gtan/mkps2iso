@@ -24,8 +24,8 @@ namespace layout
 
     struct SYSTEM_AREA
     {
-        // Sectors 0-11: License Data
-        ISO_LICENSE license;
+        // Sectors 0-11: Logo Data
+        ISO_BOOT_LOGO logo;
         // Sectors 12-13: Reserved Area (null)
         uint8_t pad[2 * DVD_SECTOR_SIZE];
         // SECTOR 14: Master Disc Descriptor
@@ -120,7 +120,7 @@ namespace layout
     // LOCATIONS (LBAs)
     // ==========================================
 
-    constexpr size_t LBA_LICENSE     = offsetof(VOLUME, sys) / DVD_SECTOR_SIZE;      // 0
+    constexpr size_t LBA_BOOT_LOGO   = offsetof(VOLUME, sys) / DVD_SECTOR_SIZE;      // 0
     constexpr size_t LBA_MASTER_DISC = offsetof(VOLUME, sys.mdd1) / DVD_SECTOR_SIZE; // 14
     constexpr size_t LBA_ISO_PVD     = offsetof(VOLUME, iso) / DVD_SECTOR_SIZE;      // 16
     constexpr size_t LBA_ISO_TERM    = offsetof(VOLUME, iso.vdt) / DVD_SECTOR_SIZE;  // 17

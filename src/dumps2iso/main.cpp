@@ -2,13 +2,12 @@
 #include "dvdreader.h"
 #include "xmlwriter.h"
 
-#define DEFAULT_LICENSE_NAME "license_data.dat"
-
 namespace param
 {
     fs::path isoFile;
     fs::path outPath;
     fs::path xmlFile;
+    std::string logo;
     bool dir = false;
     bool iso = false;
     bool lba = false;
@@ -41,34 +40,100 @@ static void PrintDate(const char *label, const ISO_LONG_DATESTAMP &date)
         printf("%s%s\n", label, LongDateToString(date).c_str());
 }
 
-static std::unique_ptr<ISO_LICENSE> ReadLicense()
-{
-    auto license = std::make_unique<ISO_LICENSE>();
-
-    dvd::reader->SeekToSector(0);
-    dvd::reader->ReadBytes(license->data, sizeof(license->data));
-
-    return license;
-}
-
-static void SaveLicense(const ISO_LICENSE &license)
+static void ExtractLogo()
 {
     if (!param::quietMode)
-        printf("Creating license data...");
+        printf("Creating logo data...");
 
-    unique_file outFile = OpenScopedFile(param::outPath / DEFAULT_LICENSE_NAME, "wb");
+    unique_file outFile = OpenScopedFile(param::outPath / param::logo, "wb");
 
     if (outFile == NULL)
     {
-        printf("\nERROR: Cannot create license file.\n");
+        printf("\nERROR: Cannot create logo file.\n");
         exit(EXIT_FAILURE);
     }
-    else if (!param::quietMode)
+
+    auto logo = std::make_unique<ISO_BOOT_LOGO>();
+    dvd::reader->SeekToSector(0);
+    dvd::reader->ReadBytes(logo->data, sizeof(logo->data));
+
+    int key = logo->data[0];
+    for (size_t i = 0; i < sizeof(logo->data); ++i)
     {
-        printf(" Ok.\n");
+        logo->data[i] ^= key;
+        logo->data[i]  = (logo->data[i] >> 5) | (logo->data[i] << 3);
     }
 
-    fwrite(license.data, 1, sizeof(license.data), outFile.get());
+    fwrite(logo->data, 1, sizeof(logo->data), outFile.get());
+
+    if (!param::quietMode)
+        printf(" Ok.\n");
+}
+
+std::string GetDiscRegion(std::string_view serial)
+{
+    if (serial.length() < 4)
+        return "undef";
+
+    switch (serial[2])
+    {
+        case 'U': return "america";
+        case 'E': return "europe";
+        case 'P':
+        case 'A':
+        case 'K': return "japan";
+        case 'C': return "china";
+        default:  return "undef";
+    }
+}
+
+std::string GetDiscSerial(std::string_view bootFileName)
+{
+    // Convert "ABCD_123.45" to "ABCD-12345"
+    std::string serial;
+    for (char ch : bootFileName)
+    {
+        if (ch == '_')
+            serial += '-';
+        else if (ch != '.')
+            serial += std::toupper(static_cast<uint8_t>(ch));
+    }
+    return serial;
+}
+
+std::string GetBootFileName()
+{
+    // Find SYSTEM.CNF in the root directory
+    for (const auto &fsEntry : fs::directory_iterator(param::outPath))
+    {
+        if (!fsEntry.is_regular_file())
+            continue;
+
+        fs::path fileName = fsEntry.path().filename();
+        if (fileName.native().length() == 10 && CompareICase(fileName.string(), "SYSTEM.CNF"))
+        {
+            auto buffer = std::make_unique<char[]>(fsEntry.file_size());
+            unique_file fp = OpenScopedFile(fsEntry, "rb");
+
+            std::string_view content(buffer.get(), fread(buffer.get(), 1, fsEntry.file_size(), fp.get()));
+            size_t bootIndex = content.find("BOOT2");
+            if (bootIndex == std::string_view::npos)
+                return "";
+
+            // Locate the start of the executable name (usually after 'cdrom0:\')
+            size_t slashIndex = content.find('\\', bootIndex);
+            if (slashIndex == std::string_view::npos)
+                return "";
+
+            size_t endIndex = content.find_first_of(";\r\n", ++slashIndex);
+            if (endIndex == std::string_view::npos)
+                endIndex = content.length();
+
+            // Extract e.g., "ABCD_123.45"
+            return std::string(content.substr(slashIndex, endIndex - slashIndex));
+        }
+    }
+    return "";
 }
 
 static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPath)
@@ -150,7 +215,6 @@ static void ParseDIR()
     // 128 = (2048 / 16) * 1;        1 path table sector for directories (16 bytes max average entry, including the root entry).
     // So, using names longer than 8.3 will decrease this limit even further.
 
-    std::string licenseFile;
     int postGap = 10240; // 20MiB dummy
     int dirCount = CdlMAXDIR - 1; // Reserve one for root
     auto ParseSubDIR = [&](auto &&self, ListView<Entry> view, const fs::path &src, int fileCount, int level) -> std::unique_ptr<iso::DirTree>
@@ -173,7 +237,7 @@ static void ParseDIR()
 
         for (const auto &fsEntry : iterator)
         {
-            auto &entry = dirEntries->EmplaceBack(Entry
+            Entry &entry = dirEntries->EmplaceBack(Entry
             {
                 .order = -1,
                 .path = (src == param::outPath) ? fs::path() : src.lexically_proximate(param::outPath),
@@ -181,19 +245,8 @@ static void ParseDIR()
                 .identifier = fsEntry.path().filename().string()
             });
 
-            if (level == 1 && entry.identifier.length() >= 7)
-            {
-                if (entry.identifier.length() == 10 && CompareICase(entry.identifier, "SYSTEM.CNF"))
-                {
-                    dirEntries->RotateBack();
-                }
-                else if (CompareICase(entry.identifier.substr(0, 7), "license"))
-                {
-                    licenseFile = entry.identifier;
-                    dirEntries->PopBack();
-                    continue;
-                }
-            }
+            if (level == 1 && entry.identifier.length() == 10 && CompareICase(entry.identifier, "SYSTEM.CNF"))
+                dirEntries->RotateBack();
 
             if (fsEntry.is_directory())
             {
@@ -225,27 +278,27 @@ static void ParseDIR()
 
     // Parse directory recursively
     root.subdir = ParseSubDIR(ParseSubDIR, ListView(entries), param::outPath, CdlMAXFILE, 1);
+    
+    std::string bootFileName = GetBootFileName();
+    if (!bootFileName.empty())
+    {
+        auto &view = root.subdir.get()->GetView();
+        auto target = std::next(view.begin(), 1);
+        auto it = std::find_if(target, view.end(), [&bootFileName](const auto entry)
+                               { return CompareICase(entry->identifier, bootFileName); });
+
+        if (it != view.end())
+            std::rotate(target, it, std::next(it));
+    }
 
     if (!param::quietMode)
         printf("Creating XML document... ");
 
     // Write XML sorted by directories
     param::outputSortedByDir = true;
-    xml::Writer().WriteHeaders(licenseFile)->WriteDirTree(entries, postGap);
+    xml::Writer().WriteHeaders("ABCD-12345", "america")->WriteDirTree(entries, postGap);
     if (!param::quietMode)
-    {
         printf("Done.\n");
-
-        printf("\n\nIMPORTANT:\n"
-               "----------------------------------------------------\n"
-               "Files in the root directory starting with \"license\"\n"
-               "are assumed to be disc licenses.\n\n"
-               "Place the BOOT executable (from SYSTEM.CNF)\n"
-               "immediately after the SYSTEM.CNF entry.\n");
-        printf("----------------------------------------------------\n");
-        printf("Press Enter to continue...");
-        getchar();
-    }
 }
 
 static void ParseISO()
@@ -268,8 +321,8 @@ static void ParseISO()
         PrintDate("  Expiration Date   : ", iso::descriptor.volumeExpiryDate);
         printf("\n");
 
-        if (!param::noXml)
-            printf("License file: \"%s\"\n\n", (param::outPath / DEFAULT_LICENSE_NAME).string().c_str());
+        if (!param::logo.empty())
+            printf("Logo file: \"%s\"\n\n", (param::outPath / param::logo).string().c_str());
     }
 
     std::list<std::tuple<std::list<Entry>, uint32_t, uint32_t>> layers;
@@ -361,14 +414,19 @@ static void ParseISO()
     if (!param::quietMode)
         printf("\n");
 
+    if (!param::logo.empty())
+        ExtractLogo();
+
     if (!param::noXml)
     {
-        SaveLicense(*ReadLicense());
+        const std::string serial = GetDiscSerial(GetBootFileName());
+        const std::string region = GetDiscRegion(serial);
+
         if (!param::quietMode)
             printf("Creating XML document...");
 
         xml::Writer xml;
-        xml.WriteHeaders(DEFAULT_LICENSE_NAME);
+        xml.WriteHeaders(serial, region);
 
         uint32_t currentLBA = 0;
         for (const auto &[entries, _, postGap] : layers)
@@ -405,7 +463,8 @@ int Main(int argc, char *argv[])
         "  -x <file>\t\tOptional XML name/destination for MKPS2ISO script (defaults to working dir)\n"
         "  -i|--iso\t\tDumps all files reading ISO structure instead of UDF\n"
         "  -l|--lba\t\tWrites all source paths and LBA offsets in the XML to force them at build time\n"
-        "  -n|--noxml\t\tDo not generate an XML file and license file\n"
+        "  -L|--logo\t\tDumps the raw decrypted boot logo\n"
+        "  -n|--noxml\t\tDo not generate an XML file\n"
         "  -p|--path-table\tGo through every known ISO directory in order; helps on soft obfuscated games\n"
         "  -s|--sort-by-dir\tOutputs a \"pretty\" XML script where entries are grouped in directories\n"
         "\t\t\t(instead of strictly following their original order on the disc)\n";
@@ -445,6 +504,11 @@ int Main(int argc, char *argv[])
             if (ParseArgument(args, "l", "lba"))
             {
                 param::lba = true;
+                continue;
+            }
+            if (ParseArgument(args, "L", "logo"))
+            {
+                param::logo = "boot_logo.raw";
                 continue;
             }
             if (ParseArgument(args, "n", "noxml"))

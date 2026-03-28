@@ -4,6 +4,12 @@
 // result to alignment issues when reading data entries with structs.
 #pragma pack(push, 1)
 
+// Boot logo "PlayStation(R) 2" (8bpp, PAL 344x71, NTSC 384x64)
+struct ISO_BOOT_LOGO
+{
+    unsigned char data[24576];
+};
+
 /// Structure of a double-endian unsigned short word
 struct ISO_USHORT_PAIR
 {
@@ -155,12 +161,6 @@ struct ISO_DESCRIPTOR
     unsigned char appData[512];
     // Padding
     unsigned char pad4[653];
-};
-
-// License data (just a sequence of 24576 bytes)
-struct ISO_LICENSE
-{
-    unsigned char data[24576];
 };
 
 // As per "System Description CD-ROM XA" by NV Philips and Sony Corporation.

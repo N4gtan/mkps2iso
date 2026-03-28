@@ -19,7 +19,7 @@ namespace xml
 
         // Parses the elements before <directory_tree> element.
         // Returns self.
-        xml::Reader *ReadHeaders();
+        Reader *ReadHeaders(std::string &serial, const char *&region);
 
         // Parses <directory_tree> element.
         // Returns the generated DirTree.

@@ -1,19 +1,25 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
 <!-- MKPS2ISO example XML script -->
 
 <!-- <iso_project>
     Starts an image project to build. Multiple <iso_project> elements may be
     specified within the same xml script useful for multi-disc game projects.
-    
+
     Attributes:
         image_name  - File name of the UDF image file to generate.
+        serial      - Specifies the serial code and number used to encrypt the boot logo. Format is CCCC-NNNNN.
+        region      - Specifies the disc region. Options are
+                        'america' (NTSC)
+                        'europe'  (PAL)
+                        'japan'   (NTSC)
+                        'china'   (NTSC)
+                        'world'   (NTSC)
+                        'undef'   (This will not generate a default boot logo)
 -->
-<iso_project image_name="myimage.iso">
+<iso_project image_name="myimage.iso" serial="ABCD-12345" region="japan">
 
     <!-- <identifiers>
         Optional, Specifies the identifier strings.
-        
+
         In order for the resulting image to be bootable to a PS2, the system and application identifiers must
         read PLAYSTATION. If for some reason you wanted to keep them blank, specify a blank system and
         application identifier.
@@ -37,17 +43,13 @@
         copyright       ="COPYLEFT"
     />
 
-    <!-- <license>
-        Optional, specifies the license file to use. The file format of the license file must be in
-        2048 byte sector format.
-
-        License data is not included within the MKPS2ISO program to avoid possible legal problems
-        in the open source environment... Better be safe than sorry.
+    <!-- <logo>
+        Optional, specifies the boot logo file to use. The file must be in raw format, 8bpp, under PAL/NTSC pixel limits and less than 24KiB.
 
         Attributes:
-            file    - Specifies the license file to inject into the ISO image.
+            file    - Specifies the logo file to inject into the ISO image.
     -->
-    <license file="licensea.dat"/>
+    <logo file="logo.raw"/>
 
     <!-- <layer>
         Specifies a layer for a DVD5 or DVD9 project.

@@ -1,5 +1,6 @@
 #include "isobuilder.h"
 #include "crc.h"
+#include "logo.h"
 #include "platform.h"
 #include "dvdwriter.h"
 #include <queue>
@@ -9,6 +10,7 @@
 namespace param
 {
     extern bool quietMode;
+    extern fs::path logoRawFile;
 };
 
 namespace global
@@ -549,11 +551,41 @@ void iso::DirTree::WriteFiles() const
     }
 }
 
-void iso::WriteLicenseData(const uint8_t *data)
+void iso::WriteLogoData(const char *region, const int key)
 {
-    auto licenseSectors = dvd::writer->GetSectorView(0, 14);
-    licenseSectors->WriteMemory(data, sizeof(ISO_LICENSE));
-    licenseSectors->WriteBlankSectors(2);
+    auto logo = std::make_unique<ISO_BOOT_LOGO>();
+    if (!param::logoRawFile.empty())
+    {
+        unique_file fp = OpenScopedFile(param::logoRawFile, "rb");
+        if (fread(logo->data, 1, sizeof(logo->data), fp.get()) == 0)
+            goto write_default_logo;
+    }
+    else
+    {
+    write_default_logo:
+        if (region != nullptr)
+            switch (std::tolower(static_cast<uint8_t>(region[0])))
+            {
+                case 'e':
+                    memcpy(logo->data, bootlogo::pal, sizeof(bootlogo::pal));
+                    break;
+                case 'a':
+                case 'j':
+                case 'w':
+                case 'c':
+                    memcpy(logo->data, bootlogo::ntsc, sizeof(bootlogo::ntsc));
+            }
+    }
+
+    for (size_t i = 0; i < sizeof(logo->data); ++i)
+    {
+        logo->data[i]  = (logo->data[i] << 5) | (logo->data[i] >> 3);
+        logo->data[i] ^= key;
+    }
+
+    auto logoSectors = dvd::writer->GetSectorView(0, 14);
+    logoSectors->WriteMemory(logo->data, sizeof(logo->data));
+    logoSectors->WriteBlankSectors(2);
 }
 
 template <size_t N>

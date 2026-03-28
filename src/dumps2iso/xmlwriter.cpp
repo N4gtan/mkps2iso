@@ -8,6 +8,7 @@ namespace param
     extern bool outputSortedByDir;
     extern fs::path outPath;
     extern fs::path xmlFile;
+    extern std::string logo;
 }
 
 namespace
@@ -341,10 +342,12 @@ uint32_t xml::Writer::WriteDirTree(const std::list<Entry> &entries, const uint32
     return currentLBA;
 }
 
-xml::Writer *xml::Writer::WriteHeaders(const std::string &licenseFile)
+xml::Writer *xml::Writer::WriteHeaders(std::string_view serial, std::string_view region)
 {
     m_projectElement = static_cast<tinyxml2::XMLElement *>(m_xmlDoc.InsertFirstChild(m_xmlDoc.NewElement(xml::elem::ISO_PROJECT)));
     m_projectElement->SetAttribute(xml::attrib::IMAGE_NAME, "mkps2iso.iso");
+    m_projectElement->SetAttribute(attrib::SERIAL, serial.data());
+    m_projectElement->SetAttribute(attrib::REGION, region.data());
 
     {
         tinyxml2::XMLElement *newElement = m_projectElement->InsertNewChildElement(xml::elem::IDENTIFIERS);
@@ -371,9 +374,11 @@ xml::Writer *xml::Writer::WriteHeaders(const std::string &licenseFile)
     const fs::path xmlPath = fs::absolute(param::xmlFile).lexically_normal().parent_path();
     srcPath = param::xmlFile.is_absolute() ? outPath : outPath.lexically_proximate(xmlPath);
 
-    { // Add license element
-        tinyxml2::XMLElement *newElement = m_projectElement->InsertNewChildElement(xml::elem::LICENSE);
-        newElement->SetAttribute(xml::attrib::LICENSE_FILE, !licenseFile.empty() ? (srcPath / licenseFile).generic_string().c_str() : licenseFile.c_str());
+    // Add logo element
+    if (!param::logo.empty())
+    {
+        tinyxml2::XMLElement *newElement = m_projectElement->InsertNewChildElement(elem::LOGO);
+        newElement->SetAttribute(attrib::LOGO_FILE, (srcPath / param::logo).generic_string().c_str());
     }
 
     return this;

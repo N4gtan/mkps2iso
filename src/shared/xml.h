@@ -9,7 +9,7 @@ namespace xml
     {
         constexpr const char *ISO_PROJECT = "iso_project";
         constexpr const char *IDENTIFIERS = "identifiers";
-        constexpr const char *LICENSE = "license";
+        constexpr const char *LOGO = "logo";
         constexpr const char *LAYER = "layer";
         constexpr const char *DEFAULT_ATTRIBUTES = "default_attributes";
         constexpr const char *DIRECTORY_TREE = "directory_tree";
@@ -21,6 +21,8 @@ namespace xml
     namespace attrib
     {
         constexpr const char *IMAGE_NAME = "image_name";
+        constexpr const char *SERIAL = "serial";
+        constexpr const char *REGION = "region";
 
         constexpr const char *ENTRY_NAME = "name";
         constexpr const char *ENTRY_SOURCE = "source";
@@ -29,7 +31,7 @@ namespace xml
         constexpr const char *ORDER = "order"; // Custom FID/DirRecord order; Sony's CDVDGEN wrote them by entry insertion order instead of by name
         constexpr const char *OFFSET = "offs";
 
-        constexpr const char *LICENSE_FILE = "file";
+        constexpr const char *LOGO_FILE = "file";
 
         constexpr const char *HIDDEN_FLAG = "hidden";
         /*constexpr const char *GMT_OFFSET = "gmt_offs";

@@ -125,7 +125,7 @@ namespace iso
     inline uint32_t layerBegLBA;
     inline IDENTIFIERS isoIdentifiers;
 
-    void WriteLicenseData(const uint8_t *data);
+    void WriteLogoData(const char *region, const int key);
 
     void WriteExtendedDescriptors();
     void WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t partitionSize, const uint32_t lba);

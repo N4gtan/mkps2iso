@@ -9,8 +9,6 @@
 `mkps2iso` is meant to provide a faster, cross-platform, modern replacement for Sony's official CDVDGEN development tool. Other ISO creation tools such as MKISOFS do not allow controlling the precise order of files (necessary for optimizing access times).\
 `mkps2iso` outputs a standard `.iso` ready to burn to DVD or use in an emulator! The hope is that `mkps2iso` tools ease PlayStation 2 homebrew development and ROM hacking and reverse engineer efforts.
 
-`mkps2iso` can properly license the image with the Sony license data when building, eliminating the use of an extra program. However, you must supply your own copy. `dumps2iso` can also dump the license data of an existing disc.
-
 ## Features
 
 **Almost all images can be rebuilt 1:1.**
@@ -18,13 +16,13 @@
 ### MKPS2ISO
 * Uses XML for scripting ISO/UDF projects.
 * Outputs images directly to `.iso` format.
-* Injects license data into image correctly.
+* Injects and encrypts boot logo into image.
 * Controls file LBA based on file order, allowing for file seek optimization (just like CDVDGEN).
 * Generates a log of all files with details such as LBA, size, etc.
 
 ### DUMPS2ISO
 * Supports any 2048 sector disc image file.
-* Extracts disc image license data to a file.
+* Extracts and decrypts disc image boot logo to a file.
 * Extracts files/data from obfuscated games.
 * Generates XML in strict LBA order preserving timestamps (or can sort by dir for pretty output).
 * Generates a standard XML project when given a directory instead of a file.
@@ -76,6 +74,7 @@ No known issues yet.
 * John Wilbert Villamor (LameGuy64) - The creator of `mkpsxiso`.
 * Silent (CookiePLMonster) - Major contributor and maintainer of `mkpsxiso`.
 * All the contributors of the original project.
+* loser - For its ps2 boot logo and master disc [documentation](https://github.com/mlafeldt/ps2logo/blob/master/Documentation/ps2boot.txt)
 
 ## Changelog
 
