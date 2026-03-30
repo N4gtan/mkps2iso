@@ -31,7 +31,7 @@
             volume_set      - Optional, specifies the volume set identifier.
             publisher       - Optional, specifies the publisher identifier.
             data_preparer   - Optional, specifies the data preparer identifier.
-            copyright       - Optional, specifies the copyright descriptor.
+            copyright       - Optional, specifies the copyright identifier.
     -->
     <identifiers
         system          ="PLAYSTATION"

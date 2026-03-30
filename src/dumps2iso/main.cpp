@@ -43,7 +43,7 @@ static void PrintDate(const char *label, const ISO_LONG_DATESTAMP &date)
 static void ExtractLogo()
 {
     if (!param::quietMode)
-        printf("Creating logo data...");
+        printf("Creating RAW logo img... ");
 
     unique_file outFile = OpenScopedFile(param::outPath / param::logo, "wb");
 
@@ -67,12 +67,12 @@ static void ExtractLogo()
     fwrite(logo->data, 1, sizeof(logo->data), outFile.get());
 
     if (!param::quietMode)
-        printf(" Ok.\n");
+        printf("Ok.\n");
 }
 
 std::string GetDiscRegion(std::string_view serial)
 {
-    if (serial.length() < 4)
+    if (serial.length() < 3)
         return "undef";
 
     switch (serial[2])
@@ -423,7 +423,7 @@ static void ParseISO()
         const std::string region = GetDiscRegion(serial);
 
         if (!param::quietMode)
-            printf("Creating XML document...");
+            printf("Creating XML document... ");
 
         xml::Writer xml;
         xml.WriteHeaders(serial, region);
@@ -435,7 +435,7 @@ static void ParseISO()
         }
 
         if (!param::quietMode)
-            printf(" Ok.\n\n");
+            printf("Ok.\n\n");
 
         // Check if there is still an EoF gap
         if (!param::noWarns && currentLBA < iso::layerBegLBA)

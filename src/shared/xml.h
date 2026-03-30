@@ -43,10 +43,10 @@ namespace xml
         constexpr const char *ID_FILE = "id_file";
         constexpr const char *SYSTEM_ID = "system";
         constexpr const char *VOLUME_ID = "volume";
-        constexpr const char *APPLICATION = "application";
         constexpr const char *VOLUME_SET = "volume_set";
         constexpr const char *PUBLISHER = "publisher";
         constexpr const char *DATA_PREPARER = "data_preparer";
+        constexpr const char *APPLICATION = "application";
         constexpr const char *COPYRIGHT = "copyright";
         constexpr const char *CREATION_DATE = "creation_date";
         constexpr const char *MODIFICATION_DATE = "modification_date";

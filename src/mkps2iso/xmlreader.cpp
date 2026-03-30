@@ -243,8 +243,8 @@ xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
         iso::isoIdentifiers.VolumeID         = identifierElement->Attribute(attrib::VOLUME_ID);
         iso::isoIdentifiers.VolumeSet        = identifierElement->Attribute(attrib::VOLUME_SET);
         iso::isoIdentifiers.Publisher        = identifierElement->Attribute(attrib::PUBLISHER);
-        iso::isoIdentifiers.Application      = identifierElement->Attribute(attrib::APPLICATION);
         iso::isoIdentifiers.DataPreparer     = identifierElement->Attribute(attrib::DATA_PREPARER);
+        iso::isoIdentifiers.Application      = identifierElement->Attribute(attrib::APPLICATION);
         iso::isoIdentifiers.Copyright        = identifierElement->Attribute(attrib::COPYRIGHT);
         iso::isoIdentifiers.CreationDate     = identifierElement->Attribute(attrib::CREATION_DATE);
         iso::isoIdentifiers.ModificationDate = identifierElement->Attribute(attrib::MODIFICATION_DATE);
@@ -269,10 +269,10 @@ xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
                     iso::isoIdentifiers.VolumeSet        = str;
                 if ((str = identifierElement->Attribute(attrib::PUBLISHER)))
                     iso::isoIdentifiers.Publisher        = str;
-                if ((str = identifierElement->Attribute(attrib::APPLICATION)))
-                    iso::isoIdentifiers.Application      = str;
                 if ((str = identifierElement->Attribute(attrib::DATA_PREPARER)))
                     iso::isoIdentifiers.DataPreparer     = str;
+                if ((str = identifierElement->Attribute(attrib::APPLICATION)))
+                    iso::isoIdentifiers.Application      = str;
                 if ((str = identifierElement->Attribute(attrib::COPYRIGHT)))
                     iso::isoIdentifiers.Copyright        = str;
                 if ((str = identifierElement->Attribute(attrib::CREATION_DATE)))

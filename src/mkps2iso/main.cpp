@@ -246,9 +246,9 @@ static bool BuildISO(xml::Reader &xml)
     int key, magic1, magic2;
     genCipherHashes(serial.c_str(), key, magic1, magic2);
 
-    // Write logo data
+    // Write boot logo data
     if (!param::quietMode)
-        printf("Writing logo data...");
+        printf("Writing logo image...  ");
 
     iso::WriteBootLogo(region, key);
 
