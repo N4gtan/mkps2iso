@@ -215,14 +215,25 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries)
     return dirTree;
 }
 
-xml::Reader *xml::Reader::ReadHeaders(std::string &serial, const char *&region)
+xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
 {
-    region = m_projectElement->Attribute(attrib::REGION);
     if (const char *str = m_projectElement->Attribute(attrib::SERIAL); str == nullptr || *str == 0)
         printf("Error: <iso_project> attribute \"serial\" is missing or blank on line %d.\n", m_projectElement->GetLineNum());
     else
         for (; *str != 0; ++str)
             serial += std::toupper(static_cast<uint8_t>(*str));
+
+    if (const char *str = m_projectElement->Attribute(attrib::REGION); str != nullptr)
+    {
+        switch (std::tolower(static_cast<uint8_t>(str[0])))
+        {
+            case 'j': region = Region::Japan;   break;
+            case 'a': region = Region::America; break;
+            case 'e': region = Region::Europe;  break;
+            case 'c': region = Region::China;   break;
+            case 'w': region = Region::World;
+        }
+    }
 
     // Set file system identifiers
     if (const tinyxml2::XMLElement *identifierElement = m_projectElement->FirstChildElement(elem::IDENTIFIERS))

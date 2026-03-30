@@ -105,7 +105,7 @@ static void genCipherHashes(const char *serial, int &key, int &magic1, int &magi
 static bool BuildISO(xml::Reader &xml)
 {
     std::string serial;
-    const char *region;
+    Region::Bit region = Region::Undef;
     if (xml.ReadHeaders(serial, region) == nullptr)
         return false;
 
@@ -250,7 +250,7 @@ static bool BuildISO(xml::Reader &xml)
     if (!param::quietMode)
         printf("Writing logo data...");
 
-    iso::WriteLogoData(region, key);
+    iso::WriteBootLogo(region, key);
 
     if (!param::quietMode)
         printf("Ok.\n");

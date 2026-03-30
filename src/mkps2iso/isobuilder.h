@@ -3,6 +3,19 @@
 #include "common.h"
 #include "listview.h"
 
+namespace Region
+{
+    enum Bit : uint8_t
+    {
+        Undef   = 0x00,
+        Japan   = 1 << 0,
+        America = 1 << 1,
+        Europe  = 1 << 2,
+        China   = 1 << 3,
+        World   = Japan | America | Europe | China
+    };
+}
+
 namespace iso
 {
     struct IDENTIFIERS
@@ -125,7 +138,7 @@ namespace iso
     inline uint32_t layerBegLBA;
     inline IDENTIFIERS isoIdentifiers;
 
-    void WriteLogoData(const char *region, const int key);
+    void WriteBootLogo(const Region::Bit region, const uint8_t key);
 
     void WriteExtendedDescriptors();
     void WriteUdfDescriptors(const uint32_t partitionStartLBA, const uint32_t partitionSize, const uint32_t lba);

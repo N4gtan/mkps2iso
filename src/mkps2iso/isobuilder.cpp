@@ -551,30 +551,24 @@ void iso::DirTree::WriteFiles() const
     }
 }
 
-void iso::WriteLogoData(const char *region, const int key)
+void iso::WriteBootLogo(const Region::Bit region, const uint8_t key)
 {
     auto logo = std::make_unique<ISO_BOOT_LOGO>();
     if (!param::logoRawFile.empty())
     {
         unique_file fp = OpenScopedFile(param::logoRawFile, "rb");
         if (fread(logo->data, 1, sizeof(logo->data), fp.get()) == 0)
-            goto write_default_logo;
+            goto default_logo;
     }
     else
     {
-    write_default_logo:
-        if (region != nullptr)
-            switch (std::tolower(static_cast<uint8_t>(region[0])))
-            {
-                case 'e':
-                    memcpy(logo->data, bootlogo::pal, sizeof(bootlogo::pal));
-                    break;
-                case 'a':
-                case 'j':
-                case 'w':
-                case 'c':
-                    memcpy(logo->data, bootlogo::ntsc, sizeof(bootlogo::ntsc));
-            }
+    default_logo:
+        switch (region)
+        {
+            case Region::Undef:  goto write_logo;
+            case Region::Europe: memcpy(logo->data, bootlogo::pal, sizeof(bootlogo::pal)); break;
+            default:             memcpy(logo->data, bootlogo::ntsc, sizeof(bootlogo::ntsc));
+        }
     }
 
     for (size_t i = 0; i < sizeof(logo->data); ++i)
@@ -583,6 +577,7 @@ void iso::WriteLogoData(const char *region, const int key)
         logo->data[i] ^= key;
     }
 
+write_logo:
     auto logoSectors = dvd::writer->GetSectorView(0, 14);
     logoSectors->WriteMemory(logo->data, sizeof(logo->data));
     logoSectors->WriteBlankSectors(2);
