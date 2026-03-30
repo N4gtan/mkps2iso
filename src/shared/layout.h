@@ -29,9 +29,9 @@ namespace layout
         // Sectors 12-13: Reserved Area (null)
         uint8_t pad[2 * DVD_SECTOR_SIZE];
         // SECTOR 14: Master Disc Descriptor
-        uint8_t mdd1[DVD_SECTOR_SIZE];
+        ISO_MASTER_DISC mdd1;
         // SECTOR 15: Master Disc Descriptor Backup
-        uint8_t mdd2[DVD_SECTOR_SIZE];
+        ISO_MASTER_DISC mdd2;
     };
 
     struct ISO

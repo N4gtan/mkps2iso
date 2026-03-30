@@ -239,6 +239,7 @@ xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
     if (const tinyxml2::XMLElement *identifierElement = m_projectElement->FirstChildElement(elem::IDENTIFIERS))
     {
         // Use individual elements defined by each attribute
+        iso::isoIdentifiers.Producer         = identifierElement->Attribute(attrib::PRODUCER);
         iso::isoIdentifiers.SystemID         = identifierElement->Attribute(attrib::SYSTEM_ID);
         iso::isoIdentifiers.VolumeID         = identifierElement->Attribute(attrib::VOLUME_ID);
         iso::isoIdentifiers.VolumeSet        = identifierElement->Attribute(attrib::VOLUME_SET);
@@ -261,6 +262,8 @@ xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
             {
                 const char *str;
                 // Use strings defined in file, otherwise leave ones already defined alone
+                if ((str = identifierElement->Attribute(attrib::PRODUCER)))
+                    iso::isoIdentifiers.Producer         = str;
                 if ((str = identifierElement->Attribute(attrib::SYSTEM_ID)))
                     iso::isoIdentifiers.SystemID         = str;
                 if ((str = identifierElement->Attribute(attrib::VOLUME_ID)))

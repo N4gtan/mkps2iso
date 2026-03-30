@@ -9,6 +9,7 @@
 
 namespace param
 {
+    extern bool master;
     extern bool quietMode;
     extern fs::path logoRawFile;
 };
@@ -583,6 +584,29 @@ write_logo:
     logoSectors->WriteBlankSectors(2);
 }
 
+static void genCipherHashes(const char *serial, uint8_t &key, uint32_t &magic1, uint8_t &magic2)
+{
+    uint32_t letters = 0;
+    uint32_t numbers = 0;
+
+    // Pack ASCII code in reverse order
+    for (int i = 0; *serial != 0 && i < 4; ++i, ++serial)
+        letters |= static_cast<uint32_t>(*serial) << (21 - (i * 7));
+
+    // Skip hyphen character
+    if (*serial == '-' || *serial == '_')
+        ++serial;
+
+    // Parse string as a Base-10 integer
+    for (int i = 0; *serial != 0 && i < 5; ++i, ++serial)
+        numbers = (numbers * 10) + (*serial - '0');
+
+    // Hash generation logic
+    key    = ((numbers <<  3) & 0xF8) | ((letters >> 25) & 0x07);
+    magic1 = ( numbers >> 10        ) | ( letters <<  7);
+    magic2 = ((numbers >>  2) & 0xF8) | 0x04;
+}
+
 template <size_t N>
 static void CopyStringPadWithSpaces(char (&dest)[N], const char *src)
 {
@@ -599,6 +623,62 @@ static void CopyStringPadWithSpaces(char (&dest)[N], const char *src)
 
     // Pad the remaining space with spaces
     std::fill(begin, end, ' ');
+}
+
+uint8_t iso::WriteMasterDisc(std::string_view serial, const Region::Bit region, const uint32_t layer0LenLBA, const uint32_t layer1LenLBA)
+{
+    // Generate encryption hashes from serial
+    uint32_t magic1;
+    uint8_t key, magic2;
+    genCipherHashes(serial.data(), key, magic1, magic2);
+
+    auto masterSectors = dvd::writer->GetSectorView(14, 2);
+    if (!param::master)
+    {
+        masterSectors->WriteBlankSectors(2);
+        return key;
+    }
+
+    ISO_MASTER_DISC md{};
+    CopyStringPadWithSpaces(md.serial, serial.data());
+    CopyStringPadWithSpaces(md.producer, iso::isoIdentifiers.Producer);
+    CopyStringPadWithSpaces(md.copyright, iso::isoIdentifiers.Copyright);
+    memcpy(md.creationDate, iso::isoIdentifiers.CreationDate, sizeof(md.creationDate));
+    memcpy(md.masterDiscId, "PlayStation Master Disc ", sizeof(md.masterDiscId));
+    md.system               = '2';
+    md.region               = region;
+    md.media                = 0x02;
+
+    md.dvd.layer0EndLBA     = layer0LenLBA - GetSizeInSectors(sizeof(anchorVolDescPtr));
+    if (layer1LenLBA == 0)
+        md.dvd.type         = 0x01;
+    else
+    {
+        md.dvd.type         = 0x02;
+        md.dvd.layer1EndLBA = md.dvd.layer0EndLBA + layer1LenLBA - layout::LBA_ISO_PVD;
+    }
+    memset(md.pad, ' ', sizeof(md.pad));
+
+    auto *magicPtr          = md.magicBlock;
+    *magicPtr++             = {0x01, UINT32_MAX, UINT32_MAX, magic1,    key};
+    if (region != Region::Undef)
+    {
+        md.regionFlags      = 0x30 | (region == Region::China ? 0x08 : 0x00);
+        *magicPtr++         = {0x02, UINT32_MAX, UINT32_MAX,      0,   0x80};
+    }
+    const uint32_t sign2    = (region == Region::China) ? 0x29EA : 0x104A;
+    *magicPtr++             = {0x01,       0x4B,      sign2, magic1,    key};
+    *magicPtr               = {0x03,       0x4B,      sign2,      0, magic2, 0x00, static_cast<uint8_t>(magicPtr == &md.magicBlock[3] ? 0x80 : 0x00)};
+    if (region == Region::China)
+        *++magicPtr         = {0x02,       0x4B,      sign2, magic1,    key};
+
+    memset(&md.burner, ' ', sizeof(md.burner));
+    CopyStringPadWithSpaces(md.toolVersion, "MKPS2ISO " VERSION);
+    memset(md.pad2, ' ', sizeof(md.pad2));
+
+    masterSectors->WriteMemory(&md, sizeof(md));
+    masterSectors->WriteMemory(&md, sizeof(md));
+    return key;
 }
 
 void iso::DirTree::WriteIsoDescriptors(const uint32_t layerLenLBA) const

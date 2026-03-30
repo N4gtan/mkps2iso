@@ -41,6 +41,7 @@ namespace xml
         constexpr const char *XA_UID = "xa_uid";*/
 
         constexpr const char *ID_FILE = "id_file";
+        constexpr const char *PRODUCER = "producer";
         constexpr const char *SYSTEM_ID = "system";
         constexpr const char *VOLUME_ID = "volume";
         constexpr const char *VOLUME_SET = "volume_set";

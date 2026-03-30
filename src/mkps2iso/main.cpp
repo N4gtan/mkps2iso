@@ -4,6 +4,7 @@
 
 namespace param
 {
+    bool master = false;
     bool noWarns = false;
     bool noIsoGen = false;
     bool overwrite = false;
@@ -77,29 +78,6 @@ static void WriteLogHead(const std::list<std::tuple<std::list<Entry>, uint32_t, 
     {
         printf("Failed to write LBA listing header \"%s\"!\n\n", param::lbaHeadFile.string().c_str());
     }
-}
-
-static void genCipherHashes(const char *serial, int &key, int &magic1, int &magic2)
-{
-    uint32_t letters = 0;
-    uint32_t numbers = 0;
-
-    // Pack ASCII code in reverse order
-    for (int i = 0; *serial != 0 && i < 4; ++i, ++serial)
-        letters |= static_cast<uint32_t>(*serial) << (21 - (i * 7));
-
-    // Skip hyphen character
-    if (*serial == '-' || *serial == '_')
-        ++serial;
-
-    // Parse string as a Base-10 integer
-    for (int i = 0; *serial != 0 && i < 5; ++i, ++serial)
-        numbers = (numbers * 10) + (*serial - '0');
-
-    // Hash generation logic
-    key    = ((numbers <<  3) & 0xF8) | ((letters >> 25) & 0x07);
-    magic1 = ( numbers >> 10        ) | ( letters <<  7);
-    magic2 = ((numbers >>  2) & 0xF8) | 0x04;
 }
 
 static bool BuildISO(xml::Reader &xml)
@@ -242,9 +220,8 @@ static bool BuildISO(xml::Reader &xml)
     if (!param::quietMode)
         printf("\n");
 
-    // Generate encryption hashes from serial
-    int key, magic1, magic2;
-    genCipherHashes(serial.c_str(), key, magic1, magic2);
+    // Write Master Disc sectors
+    const uint8_t key = iso::WriteMasterDisc(serial, region, std::get<1>(layers.front()), layers.size() > 1 ? std::get<1>(*std::next(layers.begin())) : 0);
 
     // Write boot logo data
     if (!param::quietMode)
@@ -254,10 +231,6 @@ static bool BuildISO(xml::Reader &xml)
 
     if (!param::quietMode)
         printf("Ok.\n");
-
-    // Master Disc sectors
-    auto masterSectors = dvd::writer->GetSectorView(14, 2);
-    masterSectors->WriteBlankSectors(2); // TODO: conditionally write actual MD data
 
     // Write file system
     if (!param::quietMode)
@@ -310,6 +283,7 @@ int Main(int argc, char *argv[])
         "  -h|--help\t\tShows this help text\n"
         "  -q|--quiet\t\tQuiet mode (suppress all but warnings and errors)\n"
         "  -w|--warns\t\tSuppress all warnings (can be used along with -q)\n"
+        "  -m|--master-disc\tGenerates Master Disc sectors data\n"
         "  -n|--noisogen\t\tDo not generate ISO, but calculate file LBA locations (for use with --lba or --lbahead)\n"
         "  -l|--lba <file>\tGenerate a log of file LBA locations in disc image\n"
         "  -lh|--lbahead <file>\tGenerate a C header of file LBA locations in disc image\n"
@@ -350,6 +324,11 @@ int Main(int argc, char *argv[])
             if (ParseArgument(args, "w", "warns"))
             {
                 param::noWarns = true;
+                continue;
+            }
+            if (ParseArgument(args, "m", "master-disc"))
+            {
+                param::master = true;
                 continue;
             }
             if (ParseArgument(args, "n", "noisogen"))

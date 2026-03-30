@@ -18,6 +18,7 @@
 * Outputs DVD-5/9 images directly to `.iso` format.
 * Injects and encrypts boot logo into image.
 * Controls file LBA based on file order, allowing for file seek optimization (just like CDVDGEN).
+* Generates Master Disc sectors (useful for Retail-DEX [MechaPwn](https://github.com/MechaResearch/MechaPwn)ed consoles and Debugging Stations).
 * Generates a log of all files with details such as LBA, size, etc.
 
 ### DUMPS2ISO
@@ -28,7 +29,6 @@
 * Generates a standard XML project when given a directory instead of a file.
 
 ### Limitations
-* Doesn't support generating Master Disc sectors (for now).
 * Doesn't support fragmented disc images.
 
 ## Binary Download

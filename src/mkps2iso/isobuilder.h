@@ -20,6 +20,7 @@ namespace iso
 {
     struct IDENTIFIERS
     {
+        const char *Producer;
         const char *SystemID;
         const char *VolumeID;
         const char *VolumeSet;
@@ -138,6 +139,7 @@ namespace iso
     inline uint32_t layerBegLBA;
     inline IDENTIFIERS isoIdentifiers;
 
+    uint8_t WriteMasterDisc(std::string_view serial, const Region::Bit region, const uint32_t layer0LenLBA, const uint32_t layer1LenLBA);
     void WriteBootLogo(const Region::Bit region, const uint8_t key);
 
     void WriteExtendedDescriptors();

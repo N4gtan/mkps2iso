@@ -29,6 +29,7 @@
             application     - Optional, specifies the application identifier (if blank, defaults to PLAYSTATION).
             volume          - Optional, specifies the volume identifier.
             volume_set      - Optional, specifies the volume set identifier.
+            producer        - Optional, specifies the producer identifier (only used in master disc sectors).
             publisher       - Optional, specifies the publisher identifier.
             data_preparer   - Optional, specifies the data preparer identifier.
             copyright       - Optional, specifies the copyright identifier.
@@ -38,6 +39,7 @@
         application     ="PLAYSTATION"
         volume          ="MYDISC"
         volume_set      ="MYDISC"
+        producer        ="ME"
         publisher       ="ME"
         data_preparer   ="MKPS2ISO"
         copyright       ="COPYLEFT"

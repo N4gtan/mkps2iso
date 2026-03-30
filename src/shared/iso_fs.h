@@ -10,6 +10,52 @@ struct ISO_BOOT_LOGO
     unsigned char data[24576];
 };
 
+struct ISO_MASTER_DISC
+{
+    char serial[32];               // Space padded
+    char producer[32];             // Space padded
+    char copyright[32];            // Space padded
+    char creationDate[8];          // ASCII YYYYMMDD
+    char masterDiscId[24];         // "PlayStation Master Disc "
+    unsigned char system;          // '1' PS1, '2' PS2
+    unsigned char region;          // 0x00 UND, 0x01 JPN, 0x02 USA, 0x04 EUR, 0x08 CHN, 0x0F WLD
+    unsigned char regionFlags;     // 0x00 UND or (Bit3 CHN, Bit4 Layer0 non-UND, Bit5 Layer0 DISC ID)
+    unsigned char media;           // 0x01 CD, 0x02 DVD
+
+    // Space filled for CDs
+    struct
+    {
+        unsigned char type;        // 0x01 DVD5, 0x02 DVD9
+        unsigned char layer;       // 0x00 Layer0, 0x01 Layer1
+        unsigned int layer0EndLBA; // Total Layer0 Sectors minus 1
+        unsigned int layer1EndLBA; // Total Layer1 Sectors minus 1 minus 0x0F plus layer0EndLBA or null for DVD5
+    } dvd;
+    char pad[114];                 // Spaces
+
+    // Idk what this blocks could mean but used blocks depends on the region. UND 3 blocks, JPN/USA/EUR/WLD 4 blocks, CHN 5 blocks
+    struct
+    {
+        unsigned char flag;        // Block ID/Flag (0x01, 0x02, 0x03)
+        unsigned int sign1;        // 0xFFFFFFFF or 0x4B
+        unsigned int sign2;        // 0xFFFFFFFF or 0x104A non-CHN/0x29EA CHN
+        unsigned int magic;        // 32-bit Serial hash or null
+        unsigned char  key;        //  8-bit Serial hash or 0x80
+        unsigned char  pad;        // Null
+        unsigned char  end;        // 0x80 if layer1 or for 4th block if its flag is 0x03 and regionFlags Bit5 is on, 0x00 otherwise
+    } magicBlock[32];
+
+    // This field is space filled, but it's filled with the burner drive data when burning with CDVDREC
+    struct
+    {
+        char vendor[8];            // SCSI T10 Vendor Identification
+        char product[16];          // SCSI Product Identification
+        char revision[4];          // SCSI Product Revision Level (Firmware Version)
+        char extras[20];           // SCSI Vendor Specific Data (Often contains firmware build dates)
+    } burner;
+    char toolVersion[32];          // "CDVDGEN x.xx", space padded
+    char pad2[1200];               // Spaces
+};
+
 /// Structure of a double-endian unsigned short word
 struct ISO_USHORT_PAIR
 {
