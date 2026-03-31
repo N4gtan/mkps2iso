@@ -7,6 +7,8 @@
     Attributes:
         image_name  - File name of the UDF image file to generate.
         serial      - Specifies the serial code and number used to encrypt the boot logo. Format is CCCC-NNNNN.
+                      Note: Non-American BIOS will not boot the disc if the serial differs from the executable name.
+                            (e.g., if the serial is ABCD-12345, the executable must be ABCD_123.45)
         region      - Specifies the disc region. Options are
                         'america' (NTSC)
                         'europe'  (PAL)

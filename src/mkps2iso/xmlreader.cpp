@@ -217,9 +217,7 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries)
 
 xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
 {
-    if (const char *str = m_projectElement->Attribute(attrib::SERIAL); str == nullptr || *str == 0)
-        printf("Error: <iso_project> attribute \"serial\" is missing or blank on line %d.\n", m_projectElement->GetLineNum());
-    else
+    if (const char *str = m_projectElement->Attribute(attrib::SERIAL); str != nullptr)
         for (; *str != 0; ++str)
             serial += std::toupper(static_cast<uint8_t>(*str));
 
