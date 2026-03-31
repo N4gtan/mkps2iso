@@ -1,15 +1,12 @@
 #pragma once
 
 #include "common.h"
-#include "mmappedfile.h"
 
 namespace dvd
 {
     // Reader class which allows you to read data from an PS2 image
     class IsoReader
     {
-        // Memory mapped file to handle bulk reads
-        std::unique_ptr<MMappedFile> m_mmap;
         // RAII pointer to opened file
         unique_file m_filePtr = nullptr;
         // Sector buffer size
@@ -24,6 +21,9 @@ namespace dvd
     public:
         // Open file
         bool Open(const fs::path &fileName);
+
+        // Bulk sequential read from sector
+        size_t BulkReadBytes(void *ptr, uint32_t sector, size_t bytes);
 
         // Read bytes from sector (supports sequential reading)
         template <bool singleSector = false>
@@ -47,9 +47,6 @@ namespace dvd
 
         // Close file
         void Close();
-
-        // Return a full view of a specific sector range for bulk copying
-        MMappedFile::View GetSectorView(const uint32_t offsetLBA, const uint32_t sizeLBA) const;
 
     private:
         bool PrepareNextSector();

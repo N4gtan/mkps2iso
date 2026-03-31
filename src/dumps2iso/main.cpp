@@ -1,6 +1,7 @@
 #include "platform.h"
 #include "dvdreader.h"
 #include "xmlwriter.h"
+#include "mmappedfile.h"
 
 namespace param
 {
@@ -158,7 +159,7 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
             exit(EXIT_FAILURE);
         }
 
-        memcpy(outFile.GetView(0, entry.size).GetBuffer(), dvd::reader->GetSectorView(iso::layerBegLBA + entry.lba, GetSizeInSectors(entry.size)).GetBuffer(), entry.size);
+        dvd::reader->BulkReadBytes(outFile.GetView(0, entry.size).GetBuffer(), iso::layerBegLBA + entry.lba, entry.size);
 
         if (!param::quietMode)
             printf("Done.\n");

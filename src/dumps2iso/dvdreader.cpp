@@ -10,9 +10,6 @@ bool IsoReader::Open(const fs::path &fileName)
     if (m_filePtr == nullptr) [[unlikely]]
         return false;
 
-    m_mmap = std::make_unique<MMappedFile>();
-    m_mmap->Open(fileName);
-
     m_totalSectors = GetSize(fileName) / DVD_SECTOR_SIZE;
 
     if (fread(m_sectorBuff, DVD_SECTOR_SIZE, 1, m_filePtr.get()) != 1) [[unlikely]]
@@ -30,7 +27,12 @@ bool IsoReader::Open(const fs::path &fileName)
 void IsoReader::Close()
 {
     m_filePtr.reset();
-    m_mmap.reset();
+}
+
+size_t IsoReader::BulkReadBytes(void *ptr, const uint32_t sector, const size_t bytes)
+{
+    SeekFile(m_filePtr.get(), DVD_SECTOR_SIZE * static_cast<int64_t>(sector), SEEK_SET);
+    return fread(ptr, 1, bytes, m_filePtr.get());
 }
 
 template <bool singleSector>
@@ -128,11 +130,6 @@ bool IsoReader::SeekToByte(const size_t offs)
 size_t IsoReader::GetPos() const
 {
     return (DVD_SECTOR_SIZE * static_cast<size_t>(m_currentSector)) + m_currentByte;
-}
-
-MMappedFile::View IsoReader::GetSectorView(const uint32_t offsetLBA, const uint32_t sizeLBA) const
-{
-    return m_mmap->GetView(static_cast<uint64_t>(offsetLBA) * DVD_SECTOR_SIZE, static_cast<size_t>(sizeLBA) * DVD_SECTOR_SIZE);
 }
 
 template size_t IsoReader::ReadBytes<true>(void *ptr, size_t bytes);
