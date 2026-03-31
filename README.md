@@ -30,6 +30,7 @@
 
 ### Limitations
 * Doesn't support fragmented disc images.
+* Doesn't support CD images (`.bin`/`.cue`); use [mkpsxiso](https://github.com/Lameguy64/mkpsxiso) instead.
 
 ## Binary Download
 
@@ -74,9 +75,17 @@ No known issues yet.
 * John Wilbert Villamor ([Lameguy64](https://github.com/Lameguy64)) - The creator of `mkpsxiso`.
 * Silent ([CookiePLMonster](https://github.com/CookiePLMonster)) - Major contributor and maintainer of `mkpsxiso`.
 * All the contributors of the original project.
-* loser - For its ps2 boot logo and master disc [documentation](https://github.com/mlafeldt/ps2logo/blob/master/Documentation/ps2boot.txt)
+* Mathias Lafeldt ([mlafeldt](https://github.com/mlafeldt)) - For the PS2 boot logo and master disc [documentation](https://github.com/mlafeldt/ps2logo/blob/master/Documentation/ps2boot.txt) written by **loser**.
 
 ## Changelog
 
-**Version 1.00 (26/2/2026)**
+**Version 1.1.0 (31/3/2026)**
+* Added support for generating Master Disc sectors.
+* Added support for Dual-Layer disc images.
+* Added support for automatic and custom boot logo generation.
+* Fixed mkps2iso generating incomplete FID sectors.
+* Fixed dumps2iso not creating the root folder if the image doesn't have subfolders.
+* Minor fixes/changes.
+
+**Version 1.0.0 (26/2/2026)**
 * Initial release.
