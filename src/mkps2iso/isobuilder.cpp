@@ -292,11 +292,6 @@ uint32_t iso::DirTree::CalculateFileIdDescLen() const
         dataLen += it->identifier.length() * 2; // UTF-16
         dataLen = AlignTo<4>(dataLen);
 
-        // Round dirEntryLen to the nearest multiple of 2048 as the rest of that sector is "unusable"
-        constexpr int SECTOR_MASK = DVD_SECTOR_SIZE - 1;
-        if ((dirEntryLen & SECTOR_MASK) + dataLen > DVD_SECTOR_SIZE)
-            dirEntryLen = (dirEntryLen + SECTOR_MASK) & ~SECTOR_MASK;
-
         dirEntryLen += dataLen;
     }
 
@@ -1308,11 +1303,9 @@ void iso::DirTree::WriteFileIdDescriptors(const uint32_t partitionStartLBA)
         size_t entryLength = AlignTo<4>(sizeof(*dirEntry) + dirEntry->lengthFileIdent);
         SetTag(buffer, TAG_IDENT_FID, fidLBA - partitionStartLBA, entryLength - sizeof(tag));
 
-        if (sectorView->GetSpaceInCurrentSector() < entryLength)
-        {
+        if (sectorView->GetSpaceInCurrentSector() <= entryLength)
             fidLBA++;
-            sectorView->NextSector();
-        }
+
         sectorView->WriteMemory(buffer, entryLength);
     };
 
@@ -1321,7 +1314,7 @@ void iso::DirTree::WriteFileIdDescriptors(const uint32_t partitionStartLBA)
         if (entry.type != EntryType::EntryDir)
             continue;
 
-        auto sectorView = dvd::writer->GetSectorView(layerBegLBA + entry.lba, GetSizeInSectors(entry.size));
+        auto sectorView = dvd::writer->GetSectorView(layerBegLBA + entry.lba, GetSizeInSectors(entry.subdir->CalculateFileIdDescLen()));
         writeOneEntry(sectorView.get(), entry, entry.lba, true);
 
         for (const auto it : entry.subdir->GetView())
