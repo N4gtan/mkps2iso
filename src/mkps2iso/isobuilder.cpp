@@ -38,12 +38,8 @@ static std::string ToIsoDchars(std::string_view identifier)
 {
     std::string result(identifier);
     for (char &ch : result)
-    {
-        if (isalnum(static_cast<uint8_t>(ch)))
-            ch = std::toupper(static_cast<uint8_t>(ch));
-        else if (ch != '.')
-            ch = '_';
-    }
+        ch = std::toupper(static_cast<uint8_t>(ch));
+
     return result;
 }
 
@@ -850,18 +846,17 @@ void iso::DirTree::WriteDirectoryRecords() const
         auto dirEntry = reinterpret_cast<ISO_DIR_ENTRY *>(buffer);
 
         uint32_t length;
-        std::string identifier;
+        std::string identifier = ToIsoDchars(entry.identifier);
         if (entry.type == EntryType::EntryDir)
         {
             dirEntry->flags = 0x02 | entry.hf;
             length          = entry.subdir->CalculateDirRecordLen();
-            identifier      = ToIsoDchars(entry.identifier);
         }
         else
         {
             dirEntry->flags = entry.hf;
             length          = entry.size;
-            identifier      = ToIsoDchars(entry.identifier) + ";1";
+            identifier     += ";1";
         }
 
         dirEntry->entryOffs = SetPair32(entry.lbaISO);
