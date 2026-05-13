@@ -875,7 +875,7 @@ void iso::DirTree::WriteDirectoryRecords() const
         {
             // Special cases - current/parent directory entry
             dirEntry->identifierLen = 1;
-            identifierBuffer[0] = currentOrParent.value() ? '\1' : '\0';
+            identifierBuffer[0] = *currentOrParent ? '\1' : '\0';
         }
         uint32_t entryLength = AlignTo<2>(sizeof(*dirEntry) + dirEntry->identifierLen);
 

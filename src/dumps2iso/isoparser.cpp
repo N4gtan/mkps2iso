@@ -179,7 +179,7 @@ void iso::DirTree::ReadDirEntries(int lba, const size_t size)
             continue;
 
         entry->order = entryCount - entrySkip - 1;
-        EmplaceBack(std::move(entry.value()));
+        EmplaceBack(std::move(*entry));
     }
 
     // Sort the directory by LBA for pretty printing
@@ -318,7 +318,7 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
     auto dirEntries = std::make_unique<iso::DirTree>(std::move(view));
 
     // Get Directory Record size
-    size_t dirRecordSectors = dirEntries->ReadRootDir<false>(pathTableList[parentIndex].data.dirOffs).value().size;
+    size_t dirRecordSectors = (*dirEntries->ReadRootDir<false>(pathTableList[parentIndex].data.dirOffs)).size;
 
     // Read Directory Record
     dirEntries->ReadDirEntries<false>(pathTableList[parentIndex].data.dirOffs, dirRecordSectors);
@@ -330,7 +330,7 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
             !std::any_of(dirEntries->GetView().begin(), dirEntries->GetView().end(), [&ptIt](const auto dirIt)
                          { return dirIt->identifier == ptIt->identifier; }))
         {
-            dirEntries->EmplaceBack(std::move(dirEntries->ReadRootDir<false>(ptIt->data.dirOffs).value())).hf |= 0x02; // simulate obfuscation
+            dirEntries->EmplaceBack(std::move(*dirEntries->ReadRootDir<false>(ptIt->data.dirOffs))).hf |= 0x02; // simulate obfuscation
         }
     }
 
@@ -389,7 +389,7 @@ Entry &iso::ParseRoot(std::list<Entry> &entries, const uint32_t lba, const std::
         exit(EXIT_FAILURE);
     }
 
-    Entry &root = entries.emplace_back(std::move(entry.value()));
+    Entry &root = entries.emplace_back(std::move(*entry));
     root.subdir = pathTableList == nullptr
         ? ParseSubDirectory<udf>(ListView(entries), root.lba, root.size, root.identifier)
         : ParsePathTable(ListView(entries), *pathTableList, 0, root.identifier);
