@@ -74,7 +74,7 @@ struct ISO_UINT_PAIR
 struct ISO_DESCRIPTOR_HEADER
 {
     unsigned char type;    // Volume descriptor type (1 is descriptor, 255 is descriptor terminator)
-    char identifier[5];            // Volume descriptor ID (always CD001)
+    char identifier[5];    // Volume descriptor ID (always CD001)
     unsigned char version; // Volume descriptor version (always 0x01)
     unsigned char pad;     // Unused null byte
 };

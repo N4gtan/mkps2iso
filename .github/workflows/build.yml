@@ -84,7 +84,6 @@ jobs:
       uses: softprops/action-gh-release@master
       with:
         fail_on_unmatched_files: true
-        generate_release_notes:  true
         files: |
           mkps2iso-windows/*
           mkps2iso-linux/*
