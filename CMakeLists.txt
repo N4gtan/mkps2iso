@@ -22,6 +22,7 @@ include(FetchContent)
 FetchContent_Declare(
     tinyxml2
     GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+    GIT_SHALLOW    TRUE
     EXCLUDE_FROM_ALL
 )
 
