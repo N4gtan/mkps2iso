@@ -101,21 +101,19 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
         fprintf(fp, "%s\n", entry.path.generic_string().c_str());
     };
 
-    uint32_t maxlba = 0;
-    if (level == 0)
+    auto postgapDummy = GetUnderlyingList().end();
+    if (level == 0 && !GetView().empty())
     {
-        for (const auto it : GetView())
-        {
-            if (it->type != EntryType::EntryDummy)
-                maxlba = std::max(it->lba, maxlba);
-        }
+        const auto lastIt = GetView().back();
+        if (lastIt->type == EntryType::EntryDummy)
+            postgapDummy = lastIt;
     }
 
     // Print first the files in the directory
     for (const auto it : GetView())
     {
         // Skip directories and postgap dummy
-        if (it->type == EntryType::EntryDir || (it->type == EntryType::EntryDummy && level == 0 && it->lba > maxlba))
+        if (it->type == EntryType::EntryDir || it == postgapDummy)
             continue;
 
         const char *typeStr = it->type == EntryType::EntryFile ? "File " : "Dummy";
@@ -134,7 +132,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
             printEntryDetails("Dir ", it->identifier.c_str(), "", *it);
             it->subdir->OutputLBAlisting(fp, level + 1);
         }
-        else if (it->type == EntryType::EntryDummy && level == 0 && it->lba > maxlba)
+        else if (it == postgapDummy)
         {
             printEntryDetails("Dummy", "<DUMMY>", std::to_string(GetSizeInSectors(it->size)).c_str(), *it);
         }
