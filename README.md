@@ -63,7 +63,7 @@
 >[!NOTE]
 >Installation to default paths needs administrative privileges.
 
-   Default installation path is `C:\Program Files (x86)\mkps2iso` on Windows or `/usr/local/bin` on Linux.\
+   Default installation path is `C:\Program Files\mkps2iso` on Windows or `/usr/local/bin` on Linux.\
    You can change it to any directory by passing `--install-prefix` to the first command.
 
 ## Issues
