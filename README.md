@@ -64,7 +64,7 @@
 >Installation to default paths needs administrative privileges.
 
    Default installation path is `C:\Program Files\mkps2iso` on Windows or `/usr/local/bin` on Linux.\
-   You can change it to any directory by passing `--install-prefix` to the first command.
+   You can change it to any directory by passing `--install-prefix` to the first cmake command.
 
 ## Issues
 
@@ -78,6 +78,10 @@ No known issues yet.
 * Mathias Lafeldt ([mlafeldt](https://github.com/mlafeldt)) - For the PS2 boot logo and master disc [documentation](https://github.com/mlafeldt/ps2logo/blob/master/Documentation/ps2boot.txt) written by **loser**.
 
 ## Changelog
+
+**Version 1.1.1 (8/7/2026)**
+* Fixed filesystem path parsing for non-ASCII characters.
+* Minor internal code changes and build maintenance.
 
 **Version 1.1.0 (31/3/2026)**
 * Added support for generating Master Disc sectors.
