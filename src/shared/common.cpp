@@ -179,7 +179,7 @@ std::optional<fs::path> ParsePathArgument(char **&argv, std::string_view command
         if (*(argv + 1) != nullptr && **(argv + 1) != '-')
             argv++;
 
-        return *argv;
+        return reinterpret_cast<const char8_t *>(*argv);
     }
     return std::nullopt;
 }

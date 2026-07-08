@@ -1,4 +1,5 @@
 #include "xmlwriter.h"
+#include "platform.h"
 #include <map>
 
 namespace param
@@ -162,7 +163,7 @@ static tinyxml2::XMLElement *WriteXMLEntry(const Entry &entry, tinyxml2::XMLElem
         {
             dirElement = element = dirElement->InsertNewChildElement(xml::elem::DIRECTORY_TREE);
             if (!param::lba)
-                element->SetAttribute(xml::attrib::ENTRY_SOURCE, srcPath.generic_string().c_str());
+                element->SetAttribute(xml::attrib::ENTRY_SOURCE, reinterpret_cast<const char *>(srcPath.generic_u8string().c_str()));
             goto write_optional_attr;
         }
         else if (element == nullptr)
@@ -179,7 +180,7 @@ static tinyxml2::XMLElement *WriteXMLEntry(const Entry &entry, tinyxml2::XMLElem
     if (param::lba)
     {
         const fs::path outputPath = srcPath / entry.path / entry.identifier;
-        element->SetAttribute(xml::attrib::ENTRY_SOURCE, outputPath.generic_string().c_str());
+        element->SetAttribute(xml::attrib::ENTRY_SOURCE, reinterpret_cast<const char *>(outputPath.generic_u8string().c_str()));
     }
     if (!param::dir)
         element->SetAttribute(xml::attrib::ENTRY_DATE, DateToString(entry.date, false).c_str());
@@ -234,7 +235,7 @@ static void WriteXMLByLBA(const std::list<Entry> &entries, tinyxml2::XMLElement 
             {
                 // "Enter" the directory
                 dirElement = dirElement->InsertNewChildElement(xml::elem::DIR);
-                dirElement->SetAttribute(xml::attrib::ENTRY_NAME, part.generic_string().c_str());
+                dirElement->SetAttribute(xml::attrib::ENTRY_NAME, part.string().c_str());
                 currentVirtualPath /= part;
                 nodeCache.try_emplace(currentVirtualPath, dirElement); // Cache the pointer for pass 2
             }
@@ -378,7 +379,7 @@ xml::Writer *xml::Writer::WriteHeaders(std::string_view serial, std::string_view
     if (!param::logo.empty())
     {
         tinyxml2::XMLElement *newElement = m_projectElement->InsertNewChildElement(elem::LOGO);
-        newElement->SetAttribute(attrib::LOGO_FILE, (srcPath / param::logo).generic_string().c_str());
+        newElement->SetAttribute(attrib::LOGO_FILE, reinterpret_cast<const char *>((srcPath / param::logo).generic_u8string().c_str()));
     }
 
     return this;
@@ -389,7 +390,7 @@ xml::Writer::Writer()
 {
     if (m_filePtr == nullptr)
     {
-        printf("\nERROR: Cannot create xml file \"%s\". %s\n", param::xmlFile.string().c_str(), strerror(errno));
+        printf("\nERROR: Cannot create xml file \"%" PRFILESYSTEM_PATH "\". %s\n", param::xmlFile.c_str(), strerror(errno));
         exit(EXIT_FAILURE);
     }
 }

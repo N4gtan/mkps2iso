@@ -61,7 +61,7 @@ static bool ParseFileEntry(iso::DirTree *dirTree, const tinyxml2::XMLElement *di
     std::string name;
     if (sourceElement != nullptr && *sourceElement != 0)
     {
-        srcFile = (xmlPath / sourceElement).lexically_normal();
+        srcFile = (xmlPath / reinterpret_cast<const char8_t *>(sourceElement)).lexically_normal();
 
         if (nameElement != nullptr && *nameElement != 0)
             name = nameElement;
@@ -101,7 +101,7 @@ static bool ParseDirEntry(iso::DirTree *dirTree, const tinyxml2::XMLElement *dir
     fs::path srcDir;
     std::string name;
     if (const char *sourceElement = dirElement->Attribute(xml::attrib::ENTRY_SOURCE); sourceElement != nullptr && *sourceElement != 0)
-        srcDir = (xmlPath / sourceElement).lexically_normal();
+        srcDir = (xmlPath / reinterpret_cast<const char8_t *>(sourceElement)).lexically_normal();
 
     if (const char *nameElement = dirElement->Attribute(xml::attrib::ENTRY_NAME); nameElement != nullptr && *nameElement != 0)
     {
@@ -203,7 +203,7 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries)
 
     const char *dirTreePath = directoryTree->Attribute(attrib::ENTRY_SOURCE);
     fs::path currentPath = dirTreePath != nullptr && *dirTreePath != 0
-                               ? (xmlPath / dirTreePath).lexically_normal()
+                               ? (xmlPath / reinterpret_cast<const char8_t *>(dirTreePath)).lexically_normal()
                                : xmlPath;
 
     Entry &root = iso::DirTree::CreateRootDirectory(entries, volumeDate, ReadEntryAttributes(defaultAttributes, directoryTree));
@@ -252,7 +252,7 @@ xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
         if (const char *identifierFile = identifierElement->Attribute(attrib::ID_FILE))
         {
             // Load the file as an XML document
-            if (!Open(identifierFile, m_xmlIdFile))
+            if (!Open(reinterpret_cast<const char8_t *>(identifierFile), m_xmlIdFile))
                 return nullptr;
 
             // Get the identifier element, if there is one
@@ -297,7 +297,7 @@ xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
             return nullptr;
         }
 
-        param::logoRawFile = (param::xmlFile.parent_path() / logo_file_attrib).lexically_normal();
+        param::logoRawFile = (param::xmlFile.parent_path() / reinterpret_cast<const char8_t *>(logo_file_attrib)).lexically_normal();
         gotLogoFromXML = true;
     }
 

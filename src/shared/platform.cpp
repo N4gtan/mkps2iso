@@ -149,7 +149,7 @@ void UpdateTimestamps(const fs::path &path, struct tm timestamp)
     {
         const FILETIME ft = TimetToFileTime(time);
         if (0 == SetFileTime(hFile, &ft, nullptr, &ft))
-            printf("ERROR: unable to update timestamps for %s\n", path.string().c_str());
+            printf("ERROR: unable to update timestamps for %ls\n", path.c_str());
 
         CloseHandle(hFile);
     }
@@ -159,7 +159,7 @@ void UpdateTimestamps(const fs::path &path, struct tm timestamp)
     times[1].tv_sec = time;
 
     if (0 != utimes(path.c_str(), times))
-        printf("ERROR: unable to update timestamps for %s\n", path.string().c_str());
+        printf("ERROR: unable to update timestamps for %s\n", path.c_str());
 #endif
 }
 
@@ -182,15 +182,16 @@ int wmain(int argc, wchar_t *argv[])
         u8argv.push_back(str.data());
     }
     u8argv.push_back(nullptr);
-    SetConsoleOutputCP(CP_UTF8);
 
     tzset();
+    setlocale(LC_CTYPE, ".UTF8");
     return Main(argc, u8argv.data());
 }
 #else
 int main(int argc, char *argv[])
 {
     tzset();
+    setlocale(LC_CTYPE, "");
     return Main(argc, argv);
 }
 #endif

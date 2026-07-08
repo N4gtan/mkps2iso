@@ -148,14 +148,14 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
 
         if (!param::quietMode)
         {
-            printf("  Extracting \"%s\"... ", outputPath.string().c_str());
+            printf("  Extracting \"%" PRFILESYSTEM_PATH "\"... ", outputPath.c_str());
             fflush(stdout);
         }
 
         MMappedFile outFile;
         if (!outFile.Create(outputPath, entry.size))
         {
-            printf("\nERROR: Cannot create file \"%s\"\n", outputPath.filename().string().c_str());
+            printf("\nERROR: Cannot create file \"%" PRFILESYSTEM_PATH "\"\n", outputPath.filename().c_str());
             exit(EXIT_FAILURE);
         }
 
@@ -188,7 +188,7 @@ static void CreateDirs(Entry &dirEntry, size_t &numDirs)
     fs::create_directories(dirPath, ec);
     if (ec)
     {
-        printf("\nERROR: Cannot create directory \"%s\". %s\n", dirPath.string().c_str(), ec.message().c_str());
+        printf("\nERROR: Cannot create directory \"%" PRFILESYSTEM_PATH "\". %s\n", dirPath.c_str(), ec.message().c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -222,7 +222,7 @@ static void ParseDIR()
     {
         if (level > CdlMAXLEVEL)
         {
-            printf("ERROR: Exceeded maximum directory hierarchy depth levels (%d) at \"%s\"\n", CdlMAXLEVEL, src.string().c_str());
+            printf("ERROR: Exceeded maximum directory hierarchy depth levels (%d) at \"%" PRFILESYSTEM_PATH "\"\n", CdlMAXLEVEL, src.c_str());
             exit(EXIT_FAILURE);
         }
 
@@ -232,7 +232,7 @@ static void ParseDIR()
         auto iterator = fs::directory_iterator(src, ec);
         if (ec)
         {
-            printf("ERROR: Cannot read directory \"%s\". %s\n", src.string().c_str(), ec.message().c_str());
+            printf("ERROR: Cannot read directory \"%" PRFILESYSTEM_PATH "\". %s\n", src.c_str(), ec.message().c_str());
             exit(EXIT_FAILURE);
         }
 
@@ -252,14 +252,14 @@ static void ParseDIR()
             if (fsEntry.is_directory())
             {
                 if (--dirCount == -1)
-                    printf("WARNING: Exceeded maximum directories (%d) for libcdvd sceCdSearchFile() at \"%s\"\n", CdlMAXDIR, src.string().c_str());
+                    printf("WARNING: Exceeded maximum directories (%d) for libcdvd sceCdSearchFile() at \"%" PRFILESYSTEM_PATH "\"\n", CdlMAXDIR, src.c_str());
 
                 entry.type = EntryType::EntryDir;
                 entry.subdir = self(self, dirEntries->NewView(), fsEntry.path(), CdlMAXFILE, level+1);
             }
             else if (--fileCount == -1)
             {
-                printf("WARNING: Exceeded maximum files per directory (%d) for libcdvd sceCdSearchFile() at \"%s\"\n", CdlMAXFILE, src.string().c_str());
+                printf("WARNING: Exceeded maximum files per directory (%d) for libcdvd sceCdSearchFile() at \"%" PRFILESYSTEM_PATH "\"\n", CdlMAXFILE, src.c_str());
             }
         }
         return dirEntries;
@@ -271,7 +271,7 @@ static void ParseDIR()
     memcpy(iso::descriptor.applicationIdentifier, "PLAYSTATION", sizeof("PLAYSTATION"));
 
     if (!param::quietMode)
-        printf("\nParsing directory \"%s\"... Done.\n", param::outPath.string().c_str());
+        printf("\nParsing directory \"%" PRFILESYSTEM_PATH "\"... Done.\n", param::outPath.c_str());
 
     // Create root
     std::list<Entry> entries;
@@ -306,7 +306,7 @@ static void ParseISO()
 {
     if (!param::quietMode)
     {
-        printf("Output directory : \"%s\"\n\n", param::outPath.string().c_str());
+        printf("Output directory : \"%" PRFILESYSTEM_PATH "\"\n\n", param::outPath.c_str());
 
         printf("Identifiers:\n");
         PrintId("  System ID         : ", iso::descriptor.systemID);
@@ -323,7 +323,7 @@ static void ParseISO()
         printf("\n");
 
         if (!param::logo.empty())
-            printf("Logo file: \"%s\"\n\n", (param::outPath / param::logo).string().c_str());
+            printf("Logo file: \"%" PRFILESYSTEM_PATH "\"\n\n", (param::outPath / param::logo).c_str());
     }
 
     std::list<std::tuple<std::list<Entry>, uint32_t, uint32_t>> layers;
@@ -556,7 +556,7 @@ int Main(int argc, char *argv[])
 
         if (param::isoFile.empty())
         {
-            param::isoFile = fs::path(*args).lexically_normal().lexically_proximate(fs::current_path());
+            param::isoFile = fs::path(reinterpret_cast<const char8_t *>(*args)).lexically_normal().lexically_proximate(fs::current_path());
         }
         else
         {
@@ -597,7 +597,7 @@ int Main(int argc, char *argv[])
 
     if (!dvd::reader->Open(param::isoFile))
     {
-        printf("ERROR: Cannot open file \"%s\"\n", param::isoFile.string().c_str());
+        printf("ERROR: Cannot open file \"%" PRFILESYSTEM_PATH "\"\n", param::isoFile.c_str());
         return EXIT_FAILURE;
     }
 

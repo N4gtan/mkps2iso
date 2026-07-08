@@ -5,12 +5,15 @@
 
 namespace fs { using namespace std::filesystem; }
 
+// PRFILESYSTEM_PATH printf format for fs::path::c_str()
 #ifdef _WIN32
 #define stat64 _stat64
 #define SYSTEM_TIMEZONE _timezone
+#define PRFILESYSTEM_PATH "ls"
 #else
 #include <sys/stat.h>
 #define SYSTEM_TIMEZONE timezone
+#define PRFILESYSTEM_PATH "s"
 #if defined(__APPLE__) || (defined(__linux__) && defined(__aarch64__))
 // Apple uses 64-bit stat by default since macOS 10.6 on all architectures.
 // AArch64 Linux was built as a 64-bit system by default and also lacks stat64.

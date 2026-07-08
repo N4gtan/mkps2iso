@@ -98,7 +98,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
         // Write size in byte units
         fprintf(fp, "%-11s|", entry.type != EntryType::EntryDir ? std::to_string(entry.size).c_str() : "");
         // Write source file path
-        fprintf(fp, "%s\n", entry.path.generic_string().c_str());
+        fprintf(fp, "%s\n", reinterpret_cast<const char *>(entry.path.generic_u8string().c_str()));
     };
 
     auto postgapDummy = GetUnderlyingList().end();
@@ -182,7 +182,7 @@ bool iso::DirTree::AddFileEntry(std::string id, fs::path srcFile, const EntryAtt
     auto fileAttrib = Stat(srcFile);
     if (!fileAttrib)
     {
-        printf("ERROR: File not found: %s\n", srcFile.string().c_str());
+        printf("ERROR: File not found: %" PRFILESYSTEM_PATH "\n", srcFile.c_str());
         return false;
     }
 
@@ -519,7 +519,7 @@ void iso::DirTree::WriteFiles() const
         {
             if (!param::quietMode)
             {
-                printf("  Packing \"%s\"... ", entry.path.string().c_str());
+                printf("  Packing \"%" PRFILESYSTEM_PATH "\"... ", entry.path.c_str());
                 fflush(stdout);
             }
 
