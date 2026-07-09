@@ -6,7 +6,9 @@ on:   [ push, pull_request ]
 jobs:
   build-windows:
     name:    Build mkps2iso on Windows
-    runs-on: windows-latest
+    # TODO: Implement dynamic installation of the v143 toolset on windows-latest
+    # once GitHub completely drops support for the windows-2022 runner.
+    runs-on: windows-2022
 
     steps:
     - name: Fetch repo contents
