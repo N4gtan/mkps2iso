@@ -9,8 +9,8 @@ namespace fs { using namespace std::filesystem; }
 
 enum class EntryType
 {
-    EntryFile,
     EntryDir,
+    EntryFile,
     EntryDummy
 };
 
@@ -37,18 +37,18 @@ struct PathTableEntry
 namespace iso { class DirTree; }
 struct Entry
 {
-    size_t size;            // In bytes
-    uint8_t hf;             // Hidden Flag
     int32_t order;          // Custom FID/DirRecord order
+    EntryType type;         // 0: directory, 1: file, 2: dummy
+    size_t size;            // In bytes
     uint32_t flc;           // File Link Count (CDVDGEN had a bug when reloading projects that grew this value infinitely)
     uint32_t lba;           // Logical Block Address (in sectors)
     uint32_t lbaICB;        // Information Control Block (in sectors)
     uint32_t lbaISO;        // ISO LBA (only for directories)
 
     fs::path path;          // Empty if dummy
-    EntryType type;         // 0: file, 1: directory, 2: dummy
     std::string identifier; // Empty if root or dummy
     ISO_DATESTAMP date;     // In ISO 9660 format
+    uint8_t hf;             // Hidden Flag
 
     std::unique_ptr<iso::DirTree> subdir; // Only for directories
 
@@ -71,7 +71,7 @@ ISO_LONG_DATESTAMP GetUnspecifiedLongDate();
 template <size_t N = DVD_SECTOR_SIZE>
 constexpr uint32_t GetSizeInSectors(const size_t size)
 {
-    return size > 0 ? static_cast<uint32_t>((size - 1) / N + 1) : 1;
+    return size > N ? static_cast<uint32_t>((size - 1) / N + 1) : 1;
 }
 
 // Byte alignment helper
@@ -83,16 +83,26 @@ constexpr uint32_t AlignTo(const uint32_t val)
 }
 
 // Endianness swap helpers
-uint16_t SwapBytes16(const uint16_t val);
-uint32_t SwapBytes32(const uint32_t val);
+constexpr uint16_t SwapBytes16(const uint16_t val)
+{
+    return ((val & 0xFF) << 8) |
+           ((val & 0xFF00) >> 8);
+}
+
+constexpr uint32_t SwapBytes32(const uint32_t val)
+{
+    return ((val & 0xFF) << 24) |
+           ((val & 0xFF00) << 8) |
+           ((val & 0xFF0000) >> 8) |
+           ((val & 0xFF000000) >> 24);
+}
 
 // Scoped helper for a few resources
 struct file_deleter
 {
-    void operator()(FILE *file) const
+    void operator()(FILE *file) const noexcept
     {
-        if (file != nullptr)
-            fclose(file);
+        fclose(file);
     }
 };
 using unique_file = std::unique_ptr<FILE, file_deleter>;

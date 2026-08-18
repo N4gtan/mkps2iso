@@ -43,13 +43,13 @@ ISO_DATESTAMP TimeStampToDateStamp(const timestamp &modificationTime)
 std::string DateToString(const ISO_DATESTAMP &src, bool ext)
 {
     char buf[20];
-    snprintf(buf, sizeof(buf), "%04u%02hhu%02hhu%02hhu%02hhu%02hhu",
-             src.year + 1900u, src.month, src.day, src.hour, src.minute, src.second);
+    int len = snprintf(buf, sizeof(buf), "%04u%02hhu%02hhu%02hhu%02hhu%02hhu",
+                       src.year + 1900u, src.month, src.day, src.hour, src.minute, src.second);
 
     if (ext)
-        snprintf(buf + 14, 6, "00%+hhd", src.GMToffs);
+        len += snprintf(buf + 14, 6, "00%+hhd", src.GMToffs);
 
-    return std::string(buf);
+    return std::string(buf, len);
 }
 
 std::string LongDateToString(const ISO_LONG_DATESTAMP &src)
@@ -61,7 +61,7 @@ std::string LongDateToString(const ISO_LONG_DATESTAMP &src)
 
     char GMTbuf[4];
     snprintf(GMTbuf, sizeof(GMTbuf), "%+hhd", src.GMToffs);
-    result.append(GMTbuf);
+    result.append(GMTbuf, sizeof(GMTbuf)-1);
 
     return result;
 }
@@ -131,20 +131,6 @@ ISO_LONG_DATESTAMP GetUnspecifiedLongDate()
     result.GMToffs = 0;
 
     return result;
-}
-
-uint16_t SwapBytes16(const uint16_t val)
-{
-    return ((val & 0xFF) << 8) |
-           ((val & 0xFF00) >> 8);
-}
-
-uint32_t SwapBytes32(const uint32_t val)
-{
-    return ((val & 0xFF) << 24) |
-           ((val & 0xFF00) << 8) |
-           ((val & 0xFF0000) >> 8) |
-           ((val & 0xFF000000) >> 24);
 }
 
 unique_file OpenScopedFile(const fs::path &path, const char *mode)

@@ -275,7 +275,7 @@ static void ParseDIR()
 
     // Create root
     std::list<Entry> entries;
-    Entry &root = entries.emplace_back(Entry{.order = -1, .type = EntryType::EntryDir});
+    Entry &root = entries.emplace_back(-1);
 
     // Parse directory recursively
     root.subdir = ParseSubDIR(ParseSubDIR, ListView(entries), param::outPath, CdlMAXFILE, 1);

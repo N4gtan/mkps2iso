@@ -37,7 +37,6 @@ static std::string UTF16ToUTF8(std::wstring_view str)
 
 static FILETIME TimetToFileTime(time_t t)
 {
-    //FILETIME ft;
     LARGE_INTEGER ll{.QuadPart = (t * 10000000LL) + 116444736000000000LL};
     return FILETIME{ll.LowPart, static_cast<DWORD>(ll.HighPart)};
 }

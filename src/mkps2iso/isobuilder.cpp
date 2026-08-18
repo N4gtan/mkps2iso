@@ -19,17 +19,17 @@ namespace global
     extern time_t buildTime;
 };
 
-static uint32_t MinimumOne(const uint32_t val)
+static constexpr uint32_t MinimumOne(const uint32_t val)
 {
-    return val > 1 ? val : 1;
+    return std::max(val, 1u);
 }
 
-static ISO_USHORT_PAIR SetPair16(uint16_t val)
+static constexpr ISO_USHORT_PAIR SetPair16(uint16_t val)
 {
     return {val, SwapBytes16(val)};
 }
 
-static ISO_UINT_PAIR SetPair32(uint32_t val)
+static constexpr ISO_UINT_PAIR SetPair32(uint32_t val)
 {
     return {val, SwapBytes32(val)};
 }
@@ -164,7 +164,6 @@ Entry &iso::DirTree::CreateRootDirectory(std::list<Entry> &entries, const ISO_DA
 {
     Entry &entry = entries.emplace_back();
 
-    entry.type   = EntryType::EntryDir;
     entry.subdir = std::make_unique<DirTree>(ListView(entries), &entry);
     entry.date   = volumeDate;
     entry.size   = 0; // We will calculate the length later when all entries have been processed
@@ -243,7 +242,6 @@ iso::DirTree *iso::DirTree::AddSubDirEntry(std::string id, const fs::path &srcDi
     Entry &entry = EmplaceBack();
 
     entry.identifier = std::move(id);
-    entry.type       = EntryType::EntryDir;
     entry.subdir     = std::make_unique<DirTree>(NewView(), &entry, this);
     entry.hf         = attributes.HFLAG & 3;
     //entry.attribs = attributes.XAAttrib;
