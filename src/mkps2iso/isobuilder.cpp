@@ -57,7 +57,7 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const char *name) const
         if (it->type != EntryType::EntryFile)
             continue;
 
-        std::string temp_name = "LBA_" + it->identifier;
+        std::string temp_name = "LBA_" + it->name;
 
         for (char &ch : temp_name)
         {
@@ -72,7 +72,7 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const char *name) const
     for (const auto it : GetView())
     {
         if (it->type == EntryType::EntryDir)
-            it->subdir->OutputHeaderListing(fp, it->identifier.c_str());
+            it->subdir->OutputHeaderListing(fp, it->name.c_str());
     }
 }
 
@@ -111,7 +111,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
             continue;
 
         const char *typeStr = it->type == EntryType::EntryFile ? "File " : "Dummy";
-        const char *nameStr = it->type == EntryType::EntryFile ? it->identifier.c_str() : "<DUMMY>";
+        const char *nameStr = it->type == EntryType::EntryFile ? it->name.c_str() : "<DUMMY>";
 
         // Print the entry details
         printEntryDetails(typeStr, nameStr, GetSizeInSectors(it->size), *it);
@@ -122,7 +122,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
     {
         if (it->type == EntryType::EntryDir)
         {
-            printEntryDetails("Dir ", it->identifier.c_str(), GetSizeInSectors(it->size), *it);
+            printEntryDetails("Dir ", it->name.c_str(), GetSizeInSectors(it->size), *it);
             it->subdir->OutputLBAlisting(fp, level + 1);
         }
         else if (it == postgapDummy)
@@ -132,7 +132,7 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
     }
 
     if (level > 0)
-        fprintf(fp, "%*sEnd   |%-32s|%-8s|%-7s|%-11s|\n", level + 3, "", m_entry->identifier.c_str(), "", "", "");
+        fprintf(fp, "%*sEnd   |%-32s|%-8s|%-7s|%-11s|\n", level + 3, "", m_entry->name.c_str(), "", "", "");
 }
 
 static ISO_DATESTAMP GetISODateStamp(time_t time, char GMToffs, const char *date)
@@ -169,7 +169,7 @@ Entry &iso::DirTree::CreateRootDirectory(std::list<Entry> &entries, const ISO_DA
     return entry;
 }
 
-bool iso::DirTree::AddFileEntry(std::string id, fs::path srcFile, const EntryAttributes &attributes, const char *date)
+bool iso::DirTree::AddFileEntry(std::string name, fs::path srcFile, const EntryAttributes &attributes, const char *date)
 {
     auto fileAttrib = Stat(srcFile);
     if (!fileAttrib)
@@ -181,11 +181,11 @@ bool iso::DirTree::AddFileEntry(std::string id, fs::path srcFile, const EntryAtt
     // Check if file entry already exists
     for (const auto it : GetView())
     {
-        if (!it->identifier.empty())
+        if (!it->name.empty())
         {
-            if ((it->type != EntryType::EntryDir) && (CompareICase(it->identifier, id)))
+            if ((it->type != EntryType::EntryDir) && (CompareICase(it->name, name)))
             {
-                printf("ERROR: Duplicate file entry: %s\n", id.c_str());
+                printf("ERROR: Duplicate file entry: %s\n", name.c_str());
                 return false;
             }
         }
@@ -193,18 +193,18 @@ bool iso::DirTree::AddFileEntry(std::string id, fs::path srcFile, const EntryAtt
 
     Entry &entry = EmplaceBack();
 
-    entry.identifier = std::move(id);
-    entry.type       = EntryType::EntryFile;
-    entry.hf         = attributes.HFLAG & 3;
+    entry.name    = std::move(name);
+    entry.type    = EntryType::EntryFile;
+    entry.hf      = attributes.HFLAG & 3;
     //entry.attribs = attributes.XAAttrib;
     //entry.perms   = attributes.XAPerm;
     //entry.GID     = attributes.GID;
     //entry.UID     = attributes.UID;
-    entry.order      = attributes.ORDER;
-    entry.lba        = attributes.LBAFRC;
-    entry.path       = std::move(srcFile);
-    entry.date       = GetISODateStamp(fileAttrib->st_mtime, attributes.GMTOffs, date);
-    entry.size       = fileAttrib->st_size;
+    entry.order   = attributes.ORDER;
+    entry.lba     = attributes.LBAFRC;
+    entry.path    = std::move(srcFile);
+    entry.date    = GetISODateStamp(fileAttrib->st_mtime, attributes.GMTOffs, date);
+    entry.size    = fileAttrib->st_size;
 
     return true;
 }
@@ -219,12 +219,12 @@ void iso::DirTree::AddDummyEntry(const uint32_t sectors, const uint32_t lbaFRC)
     entry.order = -1;
 }
 
-iso::DirTree *iso::DirTree::AddSubDirEntry(std::string id, const fs::path &srcDir, const EntryAttributes &attributes, const char *date)
+iso::DirTree *iso::DirTree::AddSubDirEntry(std::string name, const fs::path &srcDir, const EntryAttributes &attributes, const char *date)
 {
     // Duplicate directory entries are allowed, but the subsequent occurences will not add a new directory to 'entries'.
     for (const auto it : GetView())
     {
-        if ((it->type == EntryType::EntryDir) && (it->identifier == id))
+        if ((it->type == EntryType::EntryDir) && (it->name == name))
             return it->subdir.get();
     }
 
@@ -234,17 +234,17 @@ iso::DirTree *iso::DirTree::AddSubDirEntry(std::string id, const fs::path &srcDi
 
     Entry &entry = EmplaceBack();
 
-    entry.identifier = std::move(id);
-    entry.subdir     = std::make_unique<DirTree>(NewView(), &entry, this);
-    entry.hf         = attributes.HFLAG & 3;
+    entry.name    = std::move(name);
+    entry.subdir  = std::make_unique<DirTree>(NewView(), &entry, this);
+    entry.hf      = attributes.HFLAG & 3;
     //entry.attribs = attributes.XAAttrib;
     //entry.perms   = attributes.XAPerm;
     //entry.GID     = attributes.GID;
     //entry.UID     = attributes.UID;
-    entry.flc        = attributes.LINKC;
-    entry.order      = attributes.ORDER;
-    entry.date       = GetISODateStamp(fileAttrib->st_mtime, attributes.GMTOffs, date);
-    entry.size       = 0; // We will calculate the length later when all entries have been processed
+    entry.flc     = attributes.LINKC;
+    entry.order   = attributes.ORDER;
+    entry.date    = GetISODateStamp(fileAttrib->st_mtime, attributes.GMTOffs, date);
+    entry.size    = 0; // We will calculate the length later when all entries have been processed
 
     return entry.subdir.get();
 }
@@ -252,7 +252,7 @@ iso::DirTree *iso::DirTree::AddSubDirEntry(std::string id, const fs::path &srcDi
 uint32_t iso::DirTree::CalculatePathTableLen(const Entry &dirEntry) const
 {
     // Put identifier (empty if first entry)
-    uint32_t len = sizeof(ISO_PATHTABLE_ENTRY) + AlignTo<2>(MinimumOne(dirEntry.identifier.length()));
+    uint32_t len = sizeof(ISO_PATHTABLE_ENTRY) + AlignTo<2>(MinimumOne(dirEntry.name.length()));
     for (const auto it : GetView())
     {
         if (it->type == EntryType::EntryDir)
@@ -274,7 +274,7 @@ uint32_t iso::DirTree::CalculateFileIdDescLen() const
         uint32_t dataLen = sizeof(fileIdentDesc);
 
         dataLen++; // Compression ID
-        dataLen += it->identifier.length() * 2; // UTF-16
+        dataLen += it->name.length() * 2; // UTF-16
         dataLen = AlignTo<4>(dataLen);
 
         dirEntryLen += dataLen;
@@ -294,7 +294,7 @@ uint32_t iso::DirTree::CalculateDirRecordLen() const
 
         uint32_t dataLen = sizeof(ISO_DIR_ENTRY);
 
-        dataLen += it->identifier.length() + (it->type == EntryType::EntryFile ? sizeof(";1") - 1 : 0);
+        dataLen += it->name.length() + (it->type == EntryType::EntryFile ? sizeof(";1") - 1 : 0);
         dataLen = AlignTo<2>(dataLen);
         dataLen += sizeof(ISO_XA_ATTRIB);
 
@@ -485,7 +485,7 @@ void iso::DirTree::PrintRecordPath() const
         return;
 
     m_parent->PrintRecordPath();
-    printf("/%s", m_entry->identifier.c_str());
+    printf("/%s", m_entry->name.c_str());
 }
 
 uint32_t iso::DirTree::GetPathDepth(size_t *pathLength) const
@@ -495,7 +495,7 @@ uint32_t iso::DirTree::GetPathDepth(size_t *pathLength) const
     {
         depth++;
         if (pathLength != nullptr)
-            *pathLength += current->m_entry->identifier.length();
+            *pathLength += current->m_entry->name.length();
     }
 
     return depth;
@@ -782,10 +782,10 @@ iso::PathTable iso::DirTree::GeneratePathTable() const
             if (it->type == EntryType::EntryDir)
             {
                 auto &entry = pathTable.entries.emplace_back();
-                entry.data.identifierLen  = static_cast<uint8_t>(MinimumOne(it->identifier.length()));
+                entry.data.identifierLen  = static_cast<uint8_t>(MinimumOne(it->name.length()));
                 entry.data.dirOffs        = it->lbaISO;
                 entry.data.parentDirIndex = parentIndex;
-                entry.identifier          = ToIsoDchars(it->identifier);
+                entry.identifier          = ToIsoDchars(it->name);
 
                 // Queue subdirectories
                 dirsToProcess.emplace(it->subdir.get(), index++);
@@ -842,8 +842,8 @@ void iso::DirTree::WriteDirectoryRecords() const
             if (!currentOrParent.has_value())
             {
                 // Normal case - write out the identifier
-                dirEntry->identifierLen = entry.identifier.length();
-                memcpy(identifierBuffer, ToIsoDchars(entry.identifier).c_str(), dirEntry->identifierLen);
+                dirEntry->identifierLen = entry.name.length();
+                memcpy(identifierBuffer, ToIsoDchars(entry.name).c_str(), dirEntry->identifierLen);
             }
             else
             {
@@ -857,9 +857,9 @@ void iso::DirTree::WriteDirectoryRecords() const
             dirEntry->flags = entry.hf;
             length          = entry.size;
 
-            const size_t idLen = entry.identifier.length();
+            const size_t idLen = entry.name.length();
 			dirEntry->identifierLen = idLen + 2;
-            memcpy(identifierBuffer, ToIsoDchars(entry.identifier).c_str(), idLen);
+            memcpy(identifierBuffer, ToIsoDchars(entry.name).c_str(), idLen);
 			memcpy(identifierBuffer + idLen, ";1", 2);
         }
 
@@ -1273,7 +1273,7 @@ void iso::DirTree::WriteFileIdDescriptors(const uint32_t partitionStartLBA)
             identifierBuffer[dirEntry->lengthFileIdent++] = COMPRESSION_ID_ALGORITHM_16BIT;
 
             // Use std::filesystem::path to convert UTF-8 -> UTF-16 automatically
-            std::u16string u16Str = fs::path(u8sv(entry.identifier)).u16string();
+            std::u16string u16Str = fs::path(u8sv(entry.name)).u16string();
             for (char16_t codeUnit : u16Str)
             {
                 // First store High Byte, then the Low Byte.

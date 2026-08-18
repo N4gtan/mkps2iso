@@ -238,11 +238,11 @@ static void ParseDIR()
 
         for (const auto &fsEntry : iterator)
         {
-            Entry &entry     = dirEntries->EmplaceBack(-1, EntryType::EntryFile);
-            entry.path       = fsEntry.path().lexically_proximate(param::outPath);
-            entry.identifier = u8sv(fsEntry.path().filename().u8string());
+            Entry &entry = dirEntries->EmplaceBack(-1, EntryType::EntryFile);
+            entry.path   = fsEntry.path().lexically_proximate(param::outPath);
+            entry.name  = u8sv(fsEntry.path().filename().u8string());
 
-            if (level == 1 && entry.identifier.length() == 10 && CompareICase(entry.identifier, "SYSTEM.CNF"))
+            if (level == 1 && entry.name.length() == 10 && CompareICase(entry.name, "SYSTEM.CNF"))
                 dirEntries->RotateBack();
 
             if (fsEntry.is_directory())
@@ -282,7 +282,7 @@ static void ParseDIR()
         auto &view = root.subdir.get()->GetView();
         auto target = std::next(view.begin(), 1);
         auto it = std::find_if(target, view.end(), [&bootFileName](const auto entry)
-                               { return CompareICase(entry->identifier, bootFileName); });
+                               { return CompareICase(entry->name, bootFileName); });
 
         if (it != view.end())
             std::rotate(target, it, std::next(it));

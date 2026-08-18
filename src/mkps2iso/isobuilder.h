@@ -80,12 +80,12 @@ namespace iso
 
         /** Adds a file entry to the directory record.
          *
-         *  id              - The name of the file entry.
+         *  name            - The name of the file entry.
          *  srcfile         - Path and filename to the source file.
          *  attributes      - GMT offset/permissions for the file, if applicable.
          *  *date           - Timestamp for the file, if applicable.
          */
-        bool AddFileEntry(std::string id, fs::path srcFile, const EntryAttributes &attributes, const char *date);
+        bool AddFileEntry(std::string name, fs::path srcFile, const EntryAttributes &attributes, const char *date);
 
         /** Adds an invisible dummy file entry to the directory record. Its invisible because its file entry
          *  is not actually added to the directory record.
@@ -97,14 +97,14 @@ namespace iso
 
         /** Adds a subdirectory to the directory record.
          *
-         *  id              - The name of the subdirectory to add.
+         *  name            - The name of the subdirectory to add.
          *  srcDir          - Path and filename to the source directory.
          *  attributes      - GMT offset/permissions for the subdirectory, if applicable.
          *  *date           - Timestamp for the subdirectory, if applicable.
          *
          *  Returns: Pointer to another DirTree for accessing the directory record of the subdirectory.
          */
-        DirTree *AddSubDirEntry(std::string id, const fs::path &srcDir, const EntryAttributes &attributes, const char *date);
+        DirTree *AddSubDirEntry(std::string name, const fs::path &srcDir, const EntryAttributes &attributes, const char *date);
 
         /** Writes the source files assigned to the directory entries to a DVD image. Its recommended to execute
          *  this first before writing the actual file system.

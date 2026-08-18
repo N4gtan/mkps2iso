@@ -37,25 +37,25 @@ struct PathTableEntry
 namespace iso { class DirTree; }
 struct Entry
 {
-    int32_t order;          // Custom FID/DirRecord order
-    EntryType type;         // 0: directory, 1: file, 2: dummy
-    size_t size;            // In bytes
-    uint32_t flc;           // File Link Count (CDVDGEN had a bug when reloading projects that grew this value infinitely)
-    uint32_t lba;           // Logical Block Address (in sectors)
-    uint32_t lbaICB;        // Information Control Block (in sectors)
-    uint32_t lbaISO;        // ISO LBA (only for directories)
+    int32_t order;      // Custom FID/DirRecord order
+    EntryType type;     // 0: directory, 1: file, 2: dummy
+    size_t size;        // In bytes
+    uint32_t flc;       // File Link Count (CDVDGEN had a bug when reloading projects that grew this value infinitely)
+    uint32_t lba;       // Logical Block Address (in sectors)
+    uint32_t lbaICB;    // Information Control Block (in sectors)
+    uint32_t lbaISO;    // ISO LBA (only for directories)
 
-    fs::path path;          // Empty if dummy
-    std::string identifier; // Empty if root or dummy
-    ISO_DATESTAMP date;     // In ISO 9660 format
-    uint8_t hf;             // Hidden Flag
+    fs::path path;      // Empty if dummy
+    std::string name;   // Empty if root or dummy
+    ISO_DATESTAMP date; // In ISO 9660 format
+    uint8_t hf;         // Hidden Flag
 
     std::unique_ptr<iso::DirTree> subdir; // Only for directories
 
-    //uint8_t attribs;        // XA attributes, 0xFF is not set
-    //uint16_t perms;         // XA permissions
-    //uint16_t GID;           // Owner group ID
-    //uint16_t UID;           // Owner user ID
+    //uint8_t attribs;    // XA attributes, 0xFF is not set
+    //uint16_t perms;     // XA permissions
+    //uint16_t GID;       // Owner group ID
+    //uint16_t UID;       // Owner user ID
 };
 
 // Datestamp manipulation helpers

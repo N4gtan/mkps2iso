@@ -162,10 +162,10 @@ static tinyxml2::XMLElement *WriteXMLEntry(const Entry &entry, tinyxml2::XMLElem
 
         dirElement = element;
         if (currentVirtualPath != nullptr)
-            *currentVirtualPath /= entry.identifier;
+            *currentVirtualPath /= entry.name;
     }
 
-    element->SetAttribute(xml::attrib::ENTRY_NAME, entry.identifier.c_str());
+    element->SetAttribute(xml::attrib::ENTRY_NAME, entry.name.c_str());
     if (param::lba)
     {
         const fs::path outputPath = srcPath / entry.path;

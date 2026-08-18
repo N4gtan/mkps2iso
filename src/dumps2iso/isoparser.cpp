@@ -202,8 +202,8 @@ std::optional<Entry> iso::DirTree::ReadEntryISO()
     Entry entry{};
 
     // Read identifier string
-    entry.identifier.resize(iso.identifierLen);
-    bytesRead += dvd::reader->ReadBytes<true>(entry.identifier.data(), iso.identifierLen);
+    entry.name.resize(iso.identifierLen);
+    bytesRead += dvd::reader->ReadBytes<true>(entry.name.data(), iso.identifierLen);
 
     // ECMA-119 9.1.12 - 00 field present only if file identifier length is an even number
     if ((iso.identifierLen % 2) == 0)
@@ -228,11 +228,11 @@ std::optional<Entry> iso::DirTree::ReadEntryISO()
     entry.hf   = iso.flags & FID_FILE_CHAR_HIDDEN;
 
     // Strip trailing zeroes, if any
-    entry.identifier.resize(strlen(entry.identifier.c_str()));
+    entry.name.resize(strlen(entry.name.c_str()));
 
     // We don't need a dirty ID, clean it!
     if (entry.type != EntryType::EntryDir)
-        entry.identifier = entry.identifier.substr(0, entry.identifier.find_last_of(';'));
+        entry.name = entry.name.substr(0, entry.name.find_last_of(';'));
 
     return entry;
 }
@@ -277,7 +277,7 @@ std::optional<Entry> iso::DirTree::ReadEntryUDF()
         }
 
         // Use std::filesystem::path to convert UTF-16 -> UTF-8 automatically
-        entry.identifier = u8sv(fs::path(u16Str).u8string());
+        entry.name = u8sv(fs::path(u16Str).u8string());
     }
 
     // Skip unsupported Implementation Use
@@ -332,7 +332,7 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
     {
         if (ptIt->data.parentDirIndex-1u == parentIndex &&
             !std::any_of(dirEntries->GetView().begin(), dirEntries->GetView().end(), [&ptIt](const auto dirIt)
-                         { return dirIt->identifier == ptIt->identifier; }))
+                         { return dirIt->name == ptIt->identifier; }))
         {
             dirEntries->EmplaceBack(std::move(*dirEntries->ReadRootDir<false>(ptIt->data.dirOffs))).hf |= 0x02; // simulate obfuscation
         }
@@ -342,7 +342,7 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
     {
         if (it->type != EntryType::EntryDir)
         {
-            it->path = path / it->identifier;
+            it->path = path / it->name;
             continue;
         }
 
@@ -353,12 +353,12 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
             if (ptEntry.data.dirOffs == it->lba)
             {
                 childIndex = i;
-                it->identifier = ptEntry.identifier;
+                it->name = ptEntry.identifier;
                 break;
             }
         }
 
-        it->path = path / it->identifier;
+        it->path = path / it->name;
         if (childIndex < 0)
             continue;
 
@@ -376,7 +376,7 @@ static std::unique_ptr<iso::DirTree> ParseSubDirectory(ListView<Entry> view, con
 
     for (const auto it : dirEntries->GetView())
     {
-        it->path = path / it->identifier;
+        it->path = path / it->name;
         if (it->type == EntryType::EntryDir)
             it->subdir = ParseSubDirectory<udf>(dirEntries->NewView(), it->lba, it->size, it->path);
     }
@@ -397,8 +397,8 @@ Entry &iso::ParseRoot(std::list<Entry> &entries, const uint32_t lba, const std::
 
     Entry &root = entries.emplace_back(std::move(*entry));
     root.subdir = pathTableList == nullptr
-        ? ParseSubDirectory<udf>(ListView(entries), root.lba, root.size, root.identifier)
-        : ParsePathTable(ListView(entries), *pathTableList, 0, root.identifier);
+        ? ParseSubDirectory<udf>(ListView(entries), root.lba, root.size, root.name)
+        : ParsePathTable(ListView(entries), *pathTableList, 0, root.name);
 
     return root;
 }
