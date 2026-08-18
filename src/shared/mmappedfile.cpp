@@ -81,10 +81,10 @@ bool MMappedFile::Create(const fs::path &filePath, const uint64_t size)
     }
 #else
     m_mapFlags = PROT_READ | PROT_WRITE;
-    int file = open(filePath.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+    int file = open(filePath.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
     if (file != -1)
     {
-        if (ftruncate(file, size) == 0)
+        if (ftruncate(file, static_cast<off_t>(size)) == 0)
         {
             if (size > 0)
                 m_handle = reinterpret_cast<void *>(file);

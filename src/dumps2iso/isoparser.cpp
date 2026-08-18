@@ -175,7 +175,7 @@ void iso::DirTree::ReadDirEntries(int lba, const size_t size)
             }
         }
 
-        if (entryCount++ < entrySkip) [[unlikely]]
+        if (++entryCount <= entrySkip) [[unlikely]]
             continue;
 
         entry->order = entryCount - entrySkip - 1;
@@ -256,24 +256,28 @@ std::optional<Entry> iso::DirTree::ReadEntryUDF()
         uint8_t rawIdent[0xFF];
         bytesRead += dvd::reader->ReadBytes(rawIdent, fid.lengthFileIdent);
 
+        std::u16string u16Str;
         if (rawIdent[0] == COMPRESSION_ID_ALGORITHM_16BIT)
         {
-            std::u16string u16Str;
             u16Str.reserve((fid.lengthFileIdent - 1) / 2);
-
-            for (size_t i = 1; i < fid.lengthFileIdent; i += 2)
+            for (int i = 1; i < fid.lengthFileIdent; i += 2)
             {
                 // Combine High Byte (i) and Low Byte (i+1) directly. No Swap needed.
                 u16Str.push_back(static_cast<char16_t>((rawIdent[i] << 8) | rawIdent[i + 1]));
             }
-            // Use std::filesystem::path to convert UTF-16 -> UTF-8 automatically
-            entry.identifier = fs::path(u16Str).string();
         }
-        else if (rawIdent[0] == COMPRESSION_ID_ALGORITHM_8BIT) [[unlikely]]
+        else [[unlikely]] // COMPRESSION_ID_ALGORITHM_8BIT
         {
-            // Simple cast/copy starting from offset 1
-            entry.identifier.assign(reinterpret_cast<const char *>(rawIdent + 1), fid.lengthFileIdent - 1);
+            u16Str.reserve(fid.lengthFileIdent - 1);
+            for (int i = 1; i < fid.lengthFileIdent; ++i)
+            {
+                // Zero-extend ISO-8859-1 byte to UTF-16 code unit (U+0000 to U+00FF)
+                u16Str.push_back(static_cast<char16_t>(rawIdent[i]));
+            }
         }
+
+        // Use std::filesystem::path to convert UTF-16 -> UTF-8 automatically
+        entry.identifier = u8sv(fs::path(u16Str).u8string());
     }
 
     // Skip unsupported Implementation Use
@@ -318,7 +322,7 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
     auto dirEntries = std::make_unique<iso::DirTree>(std::move(view));
 
     // Get Directory Record size
-    size_t dirRecordSectors = (*dirEntries->ReadRootDir<false>(pathTableList[parentIndex].data.dirOffs)).size;
+    size_t dirRecordSectors = dirEntries->ReadRootDir<false>(pathTableList[parentIndex].data.dirOffs)->size;
 
     // Read Directory Record
     dirEntries->ReadDirEntries<false>(pathTableList[parentIndex].data.dirOffs, dirRecordSectors);
@@ -336,27 +340,29 @@ static std::unique_ptr<iso::DirTree> ParsePathTable(ListView<Entry> view, const 
 
     for (const auto it : dirEntries->GetView())
     {
-        it->path = path;
-
-        if (it->type == EntryType::EntryDir)
+        if (it->type != EntryType::EntryDir)
         {
-            int childIndex = -1;
-            for (size_t i = 1; i < pathTableList.size(); ++i)
-            {
-                const auto &ptEntry = pathTableList[i];
-                if (ptEntry.data.dirOffs == it->lba)
-                {
-                    childIndex = i;
-                    it->identifier = ptEntry.identifier;
-                    break;
-                }
-            }
-
-            if (childIndex < 0)
-                continue;
-
-            it->subdir = ParsePathTable(dirEntries->NewView(), pathTableList, childIndex, path / it->identifier);
+            it->path = path / it->identifier;
+            continue;
         }
+
+        int childIndex = -1;
+        for (size_t i = 1; i < pathTableList.size(); ++i)
+        {
+            const auto &ptEntry = pathTableList[i];
+            if (ptEntry.data.dirOffs == it->lba)
+            {
+                childIndex = i;
+                it->identifier = ptEntry.identifier;
+                break;
+            }
+        }
+
+        it->path = path / it->identifier;
+        if (childIndex < 0)
+            continue;
+
+        it->subdir = ParsePathTable(dirEntries->NewView(), pathTableList, childIndex, it->path);
     }
 
     return dirEntries;
@@ -370,9 +376,9 @@ static std::unique_ptr<iso::DirTree> ParseSubDirectory(ListView<Entry> view, con
 
     for (const auto it : dirEntries->GetView())
     {
-        it->path = path;
+        it->path = path / it->identifier;
         if (it->type == EntryType::EntryDir)
-            it->subdir = ParseSubDirectory<udf>(dirEntries->NewView(), it->lba, it->size, path / it->identifier);
+            it->subdir = ParseSubDirectory<udf>(dirEntries->NewView(), it->lba, it->size, it->path);
     }
 
     return dirEntries;

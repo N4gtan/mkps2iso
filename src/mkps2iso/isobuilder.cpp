@@ -769,11 +769,10 @@ iso::PathTable iso::DirTree::GeneratePathTable() const
     PathTable pathTable;
 
     // Write out root explicitly first
-    pathTable.entries.push_back({.data = {
-        .identifierLen  = 1,
-        .dirOffs        = m_entry->lbaISO,
-        .parentDirIndex = index // Self for Root
-    }});
+    auto &root = pathTable.entries.emplace_back();
+    root.data.identifierLen  = 1;
+    root.data.dirOffs        = m_entry->lbaISO;
+    root.data.parentDirIndex = index; // Self for Root
 
     // Initialize Breadth-First Search Queue
     std::queue<std::tuple<const DirTree *, uint16_t>> dirsToProcess;
@@ -789,12 +788,11 @@ iso::PathTable iso::DirTree::GeneratePathTable() const
         {
             if (it->type == EntryType::EntryDir)
             {
-                pathTable.entries.push_back({.data = {
-                    .identifierLen  = static_cast<uint8_t>(MinimumOne(it->identifier.length())),
-                    .dirOffs        = it->lbaISO,
-                    .parentDirIndex = parentIndex},
-                    .identifier     = ToIsoDchars(it->identifier)
-                });
+                auto &entry = pathTable.entries.emplace_back();
+                entry.data.identifierLen  = static_cast<uint8_t>(MinimumOne(it->identifier.length()));
+                entry.data.dirOffs        = it->lbaISO;
+                entry.data.parentDirIndex = parentIndex;
+                entry.identifier          = ToIsoDchars(it->identifier);
 
                 // Queue subdirectories
                 dirsToProcess.emplace(it->subdir.get(), index++);
@@ -840,19 +838,36 @@ void iso::DirTree::WriteDirectoryRecords() const
         uint8_t buffer[sizeof(ISO_DIR_ENTRY) + 33 + sizeof(ISO_XA_ATTRIB)]{}; // 33 = 31 File Identifier chars + ';1'
 
         auto dirEntry = reinterpret_cast<ISO_DIR_ENTRY *>(buffer);
+        char *identifierBuffer = reinterpret_cast<char *>(dirEntry + 1);
 
         uint32_t length;
-        std::string identifier = ToIsoDchars(entry.identifier);
         if (entry.type == EntryType::EntryDir)
         {
             dirEntry->flags = 0x02 | entry.hf;
             length          = entry.subdir->CalculateDirRecordLen();
+
+            if (!currentOrParent.has_value())
+            {
+                // Normal case - write out the identifier
+                dirEntry->identifierLen = entry.identifier.length();
+                memcpy(identifierBuffer, ToIsoDchars(entry.identifier).c_str(), dirEntry->identifierLen);
+            }
+            else
+            {
+                // Special cases - current/parent directory entry
+                dirEntry->identifierLen = 1;
+                identifierBuffer[0] = *currentOrParent ? '\1' : '\0';
+            }
         }
         else
         {
             dirEntry->flags = entry.hf;
             length          = entry.size;
-            identifier     += ";1";
+
+            const size_t idLen = entry.identifier.length();
+			dirEntry->identifierLen = idLen + 2;
+            memcpy(identifierBuffer, ToIsoDchars(entry.identifier).c_str(), idLen);
+			memcpy(identifierBuffer + idLen, ";1", 2);
         }
 
         dirEntry->entryOffs = SetPair32(entry.lbaISO);
@@ -860,19 +875,6 @@ void iso::DirTree::WriteDirectoryRecords() const
         dirEntry->volSeqNum = SetPair16(1);
         dirEntry->entryDate = entry.date;
 
-        // Normal case - write out the identifier
-        char *identifierBuffer = reinterpret_cast<char *>(dirEntry + 1);
-        if (!currentOrParent.has_value())
-        {
-            dirEntry->identifierLen = identifier.length();
-            strncpy(identifierBuffer, identifier.c_str(), identifier.length());
-        }
-        else
-        {
-            // Special cases - current/parent directory entry
-            dirEntry->identifierLen = 1;
-            identifierBuffer[0] = *currentOrParent ? '\1' : '\0';
-        }
         uint32_t entryLength = AlignTo<2>(sizeof(*dirEntry) + dirEntry->identifierLen);
 
         /*auto xa = reinterpret_cast<cdxa::ISO_XA_ATTRIB*>(buffer+entryLength);

@@ -84,7 +84,7 @@ static bool ParseFileEntry(iso::DirTree *dirTree, const tinyxml2::XMLElement *di
         }
 
         // ECMA-119 6.8.2.1 - The path length of any file shall not exceed 255.
-        size_t pathLength = (name + ";1").length();
+        size_t pathLength = name.length() + 2; // 2 = ";1"
         int depth = dirTree->GetPathDepth(&pathLength);
         if (pathLength + depth > 255)
         {
@@ -218,8 +218,10 @@ iso::DirTree *xml::Reader::ReadDirTree(std::list<Entry> &entries)
 xml::Reader *xml::Reader::ReadHeaders(std::string &serial, Region::Bit &region)
 {
     if (const char *str = m_projectElement->Attribute(attrib::SERIAL); str != nullptr)
+    {
         for (; *str != 0; ++str)
             serial += std::toupper(static_cast<uint8_t>(*str));
+    }
 
     if (const char *str = m_projectElement->Attribute(attrib::REGION); str != nullptr)
     {

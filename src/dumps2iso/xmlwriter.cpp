@@ -168,7 +168,7 @@ static tinyxml2::XMLElement *WriteXMLEntry(const Entry &entry, tinyxml2::XMLElem
     element->SetAttribute(xml::attrib::ENTRY_NAME, entry.identifier.c_str());
     if (param::lba)
     {
-        const fs::path outputPath = srcPath / entry.path / entry.identifier;
+        const fs::path outputPath = srcPath / entry.path;
         element->SetAttribute(xml::attrib::ENTRY_SOURCE, reinterpret_cast<const char *>(outputPath.generic_u8string().c_str()));
     }
     if (!param::dir)
@@ -211,7 +211,7 @@ static void WriteXMLByLBA(const std::list<Entry> &entries, tinyxml2::XMLElement 
         expectedLBA = std::max(expectedLBA, it->lba + GetSizeInSectors(it->size));
 
         // Work out the relative position between the current directory and the element to create
-        for (const fs::path &part : it->path.lexically_relative(currentVirtualPath))
+        for (const fs::path &part : it->path.parent_path().lexically_relative(currentVirtualPath))
         {
             if (part == "..")
             {
@@ -238,8 +238,8 @@ static void WriteXMLByLBA(const std::list<Entry> &entries, tinyxml2::XMLElement 
         if (it->type != EntryType::EntryDir)
             continue;
 
-        dirElement         = nodeCache[it->path];
-        currentVirtualPath = it->path / it->identifier;
+        dirElement         = nodeCache[it->path.parent_path()];
+        currentVirtualPath = it->path;
         auto targetIt      = nodeCache.find(currentVirtualPath);
         tinyxml2::XMLElement* target = (targetIt != nodeCache.end()) ? targetIt->second : nullptr;
 

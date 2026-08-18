@@ -144,7 +144,7 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
         if (entry.type == EntryType::EntryDir) // Do not extract directories, they're already prepared
             continue;
 
-        const fs::path outputPath = rootPath / entry.path / entry.identifier;
+        const fs::path outputPath = rootPath / entry.path;
 
         if (!param::quietMode)
         {
@@ -169,7 +169,7 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
     // else directories will have their timestamps discarded when files are being unpacked into them!
     for (const auto &entry : entries)
     {
-        fs::path toChange(rootPath / entry.path / entry.identifier);
+        fs::path toChange(rootPath / entry.path);
         UpdateTimestamps(toChange, tm{
             .tm_sec  = entry.date.second,
             .tm_min  = entry.date.minute,
@@ -184,7 +184,7 @@ static void ExtractFiles(const std::list<Entry> &entries, const fs::path &rootPa
 static void CreateDirs(Entry &dirEntry, size_t &numDirs)
 {
     std::error_code ec;
-    const fs::path dirPath = param::outPath / dirEntry.path / dirEntry.identifier;
+    const fs::path dirPath = param::outPath / dirEntry.path;
     fs::create_directories(dirPath, ec);
     if (ec)
     {
@@ -238,13 +238,9 @@ static void ParseDIR()
 
         for (const auto &fsEntry : iterator)
         {
-            Entry &entry = dirEntries->EmplaceBack(Entry
-            {
-                .order = -1,
-                .path = (src == param::outPath) ? fs::path() : src.lexically_proximate(param::outPath),
-                .type = EntryType::EntryFile,
-                .identifier = fsEntry.path().filename().string()
-            });
+            Entry &entry     = dirEntries->EmplaceBack(-1, EntryType::EntryFile);
+            entry.path       = fsEntry.path().lexically_proximate(param::outPath);
+            entry.identifier = u8sv(fsEntry.path().filename().u8string());
 
             if (level == 1 && entry.identifier.length() == 10 && CompareICase(entry.identifier, "SYSTEM.CNF"))
                 dirEntries->RotateBack();
