@@ -16,6 +16,10 @@ set(CMAKE_CXX_SCAN_FOR_MODULES  OFF)
 set(BUILD_SHARED_LIBS           OFF)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+# Enable Link Time Optimization (LTO/IPO) for Release builds
+include(CheckIPOSupported)
+check_ipo_supported(RESULT CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE)
+
 ## External dependencies
 
 include(FetchContent)
