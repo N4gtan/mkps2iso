@@ -149,27 +149,16 @@ static void SimplifyDefaultXMLAttributes(tinyxml2::XMLElement *element, const En
     }
 }
 
-static tinyxml2::XMLElement *WriteXMLEntry(const Entry &entry, tinyxml2::XMLElement *dirElement, fs::path *currentVirtualPath = nullptr, tinyxml2::XMLElement *existingElem = nullptr)
+static tinyxml2::XMLElement *WriteXMLEntry(const Entry &entry, tinyxml2::XMLElement *dirElement, fs::path *currentVirtualPath = nullptr, tinyxml2::XMLElement *element = nullptr)
 {
-    tinyxml2::XMLElement *element = existingElem;
-
     if (entry.type != EntryType::EntryDir)
     {
         element = dirElement->InsertNewChildElement(xml::elem::FILE);
     }
     else
     {
-        if (entry.identifier.empty()) [[unlikely]]
-        {
-            dirElement = element = dirElement->InsertNewChildElement(xml::elem::DIRECTORY_TREE);
-            if (!param::lba)
-                element->SetAttribute(xml::attrib::ENTRY_SOURCE, reinterpret_cast<const char *>(srcPath.generic_u8string().c_str()));
-            goto write_optional_attr;
-        }
-        else if (element == nullptr)
-        {
+        if (element == nullptr)
             element = dirElement->InsertNewChildElement(xml::elem::DIR);
-        }
 
         dirElement = element;
         if (currentVirtualPath != nullptr)
@@ -185,7 +174,6 @@ static tinyxml2::XMLElement *WriteXMLEntry(const Entry &entry, tinyxml2::XMLElem
     if (!param::dir)
         element->SetAttribute(xml::attrib::ENTRY_DATE, DateToString(entry.date, false).c_str());
 
-write_optional_attr:
     WriteOptionalXMLAttribs(element, entry);
 
     return dirElement;
@@ -235,7 +223,7 @@ static void WriteXMLByLBA(const std::list<Entry> &entries, tinyxml2::XMLElement 
             {
                 // "Enter" the directory
                 dirElement = dirElement->InsertNewChildElement(xml::elem::DIR);
-                dirElement->SetAttribute(xml::attrib::ENTRY_NAME, part.string().c_str());
+                dirElement->SetAttribute(xml::attrib::ENTRY_NAME, reinterpret_cast<const char *>(part.u8string().c_str()));
                 currentVirtualPath /= part;
                 nodeCache.try_emplace(currentVirtualPath, dirElement); // Cache the pointer for pass 2
             }
@@ -322,7 +310,10 @@ uint32_t xml::Writer::WriteDirTree(const std::list<Entry> &entries, const uint32
     tinyxml2::XMLElement *defaultAttributesElement = layerElement->InsertNewChildElement(elem::DEFAULT_ATTRIBUTES);
 
     const Entry &root = entries.front();
-    tinyxml2::XMLElement *directoryTreeElement = WriteXMLEntry(root, layerElement);
+    tinyxml2::XMLElement *directoryTreeElement = layerElement->InsertNewChildElement(xml::elem::DIRECTORY_TREE);
+    if (!param::lba)
+        directoryTreeElement->SetAttribute(xml::attrib::ENTRY_SOURCE, reinterpret_cast<const char *>(srcPath.generic_u8string().c_str()));
+    WriteOptionalXMLAttribs(directoryTreeElement, root);
 
     uint32_t currentLBA = root.lbaICB + entries.size(); // This may fail for an image that was not created with CDVDGEN
     if (param::outputSortedByDir)

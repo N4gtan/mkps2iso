@@ -111,6 +111,16 @@ unique_file OpenScopedFile(const fs::path &path, const char *mode);
 // String manipulation helper
 bool CompareICase(std::string_view strLeft, std::string_view strRight);
 
+inline std::string_view u8sv(std::u8string_view str)
+{
+    return std::string_view(reinterpret_cast<const char *>(str.data()), str.length());
+}
+
+inline std::u8string_view u8sv(std::string_view str)
+{
+    return std::u8string_view(reinterpret_cast<const char8_t *>(str.data()), str.length());
+}
+
 // Argument parsing helpers
 bool ParseArgument(char **argv, std::string_view command, std::string_view longCommand = std::string_view{});
 std::optional<fs::path> ParsePathArgument(char **&argv, std::string_view command, std::string_view longCommand = std::string_view{});

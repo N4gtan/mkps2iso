@@ -1278,7 +1278,7 @@ void iso::DirTree::WriteFileIdDescriptors(const uint32_t partitionStartLBA)
             identifierBuffer[dirEntry->lengthFileIdent++] = COMPRESSION_ID_ALGORITHM_16BIT;
 
             // Use std::filesystem::path to convert UTF-8 -> UTF-16 automatically
-            std::u16string u16Str = fs::path(entry.identifier).u16string();
+            std::u16string u16Str = fs::path(u8sv(entry.identifier)).u16string();
             for (char16_t codeUnit : u16Str)
             {
                 // First store High Byte, then the Low Byte.

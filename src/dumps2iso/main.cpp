@@ -556,7 +556,7 @@ int Main(int argc, char *argv[])
 
         if (param::isoFile.empty())
         {
-            param::isoFile = fs::path(reinterpret_cast<const char8_t *>(*args)).lexically_normal().lexically_proximate(fs::current_path());
+            param::isoFile = ARGV_PATH(*args).lexically_normal().lexically_proximate(fs::current_path());
         }
         else
         {

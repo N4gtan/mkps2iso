@@ -66,12 +66,12 @@ static bool ParseFileEntry(iso::DirTree *dirTree, const tinyxml2::XMLElement *di
         if (nameElement != nullptr && *nameElement != 0)
             name = nameElement;
         else
-            name = srcFile.filename().string();
+            name = u8sv(srcFile.filename().u8string());
     }
     else
     {
         name    = nameElement;
-        srcFile = currentPath / name;
+        srcFile = currentPath / u8sv(name);
     }
 
     // ECMA-119 7.5.1 and 10.1 - File Identifier shall be 1-30 characters long plus one dot.
@@ -107,11 +107,11 @@ static bool ParseDirEntry(iso::DirTree *dirTree, const tinyxml2::XMLElement *dir
     {
         name = nameElement;
         if (srcDir.empty())
-            srcDir = currentPath / name;
+            srcDir = currentPath / u8sv(name);
     }
     else if (!srcDir.empty())
     {
-        name = srcDir.filename().string();
+        name = u8sv(srcDir.filename().u8string());
     }
     else
     {
@@ -347,7 +347,7 @@ tinyxml2::XMLElement *xml::Reader::NextProjectElement()
         {
             // Check if image_name attribute is specified
             if (const char *image_name = m_projectElement->Attribute(attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
-                param::isoFile = image_name;
+                param::isoFile = reinterpret_cast<const char8_t *>(image_name);
             else
                (param::isoFile = param::xmlFile.stem()) += ".iso"; // Use file name of XML project as the image file name
         }
@@ -361,7 +361,7 @@ tinyxml2::XMLElement *xml::Reader::NextProjectElement()
             // Check if image_name attribute is specified
             if (const char *image_name = m_projectElement->Attribute(attrib::IMAGE_NAME); image_name != nullptr && *image_name != 0)
             {
-                param::isoFile = image_name;
+                param::isoFile = reinterpret_cast<const char8_t *>(image_name);
             }
             else
             {
