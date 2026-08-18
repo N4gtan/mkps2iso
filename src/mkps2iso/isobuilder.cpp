@@ -63,12 +63,6 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const char *name) const
         {
             if (ch == '.' || ch == ' ' || ch == '-')
                 ch = '_';
-
-            if (ch == ';')
-            {
-                ch = '\0';
-                break;
-            }
         }
 
         fprintf(fp, "#define %-17s %u\n", temp_name.c_str(), layerBegLBA + it->lba);
@@ -85,14 +79,14 @@ void iso::DirTree::OutputHeaderListing(FILE *fp, const char *name) const
 void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
 {
     // Helper lambda to print common details
-    auto printEntryDetails = [&](const char *type, const char *name, const char *sectors, const Entry &entry)
+    auto printEntryDetails = [&](const char *type, const char *name, uint32_t sectors, const Entry &entry)
     {
         // Write entry type with 4 spaces at start
         fprintf(fp, "%*s%-6s|", level + 4, "", type);
         // Write entry name
         fprintf(fp, "%-32s|", name);
         // Write entry size in sectors
-        fprintf(fp, "%-8s|", sectors);
+        fprintf(fp, "%-8u|", sectors);
         // Write LBA offset
         fprintf(fp, "%-7u|", layerBegLBA + entry.lba);
         // Write size in byte units
@@ -117,11 +111,10 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
             continue;
 
         const char *typeStr = it->type == EntryType::EntryFile ? "File " : "Dummy";
-        std::string nameStr = it->type == EntryType::EntryFile ? it->identifier : "<DUMMY>";
-        uint32_t sectors = GetSizeInSectors(it->size);
+        const char *nameStr = it->type == EntryType::EntryFile ? it->identifier.c_str() : "<DUMMY>";
 
         // Print the entry details
-        printEntryDetails(typeStr, nameStr.c_str(), std::to_string(sectors).c_str(), *it);
+        printEntryDetails(typeStr, nameStr, GetSizeInSectors(it->size), *it);
     }
 
     // Print directories and postgap dummy
@@ -129,12 +122,12 @@ void iso::DirTree::OutputLBAlisting(FILE *fp, const int level) const
     {
         if (it->type == EntryType::EntryDir)
         {
-            printEntryDetails("Dir ", it->identifier.c_str(), "", *it);
+            printEntryDetails("Dir ", it->identifier.c_str(), GetSizeInSectors(it->size), *it);
             it->subdir->OutputLBAlisting(fp, level + 1);
         }
         else if (it == postgapDummy)
         {
-            printEntryDetails("Dummy", "<DUMMY>", std::to_string(GetSizeInSectors(it->size)).c_str(), *it);
+            printEntryDetails("Dummy", "<DUMMY>", GetSizeInSectors(it->size), *it);
         }
     }
 
