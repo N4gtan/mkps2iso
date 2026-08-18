@@ -9,17 +9,11 @@ bool IsoReader::Open(const fs::path &fileName)
 
     if (m_filePtr == nullptr) [[unlikely]]
         return false;
-
-    m_totalSectors = GetSize(fileName) / DVD_SECTOR_SIZE;
-
-    if (fread(m_sectorBuff, DVD_SECTOR_SIZE, 1, m_filePtr.get()) != 1) [[unlikely]]
-    {
-        Close();
-        return false;
-    }
+    setvbuf(m_filePtr.get(), nullptr, _IOFBF, 1024*1024);
 
     m_currentByte   = 0;
     m_currentSector = 0;
+    m_totalSectors  = GetSize(fileName) / DVD_SECTOR_SIZE;
 
     return true;
 }
@@ -35,45 +29,43 @@ size_t IsoReader::BulkReadBytes(void *ptr, const uint32_t sector, const size_t b
     return fread(ptr, 1, bytes, m_filePtr.get());
 }
 
-template <bool singleSector>
+template <bool singleSector, bool Skip>
 inline size_t IsoReader::ReadBytesImpl(void *ptr, size_t bytes)
 {
+    if (bytes == 0) [[unlikely]]
+        return 0;
+
     size_t bytesRead    = 0;
     char *const dataPtr = static_cast<char *>(ptr);
 
     if (m_currentSector >= m_totalSectors) [[unlikely]]
         goto eof_fill;
 
-    while (bytes > 0)
+    do
     {
-        if (m_currentByte >= DVD_SECTOR_SIZE) [[unlikely]]
-            goto check_next_sector;
-
-        {
-            const size_t toRead = std::min(DVD_SECTOR_SIZE - m_currentByte, bytes);
-
-            if (dataPtr != nullptr)  [[likely]]
-                memcpy(dataPtr + bytesRead, &m_sectorBuff[m_currentByte], toRead);
-
-            bytes         -= toRead;
-            bytesRead     += toRead;
-            m_currentByte += toRead;
-        }
-
         if (m_currentByte >= DVD_SECTOR_SIZE)
         {
-        check_next_sector:
             if constexpr (singleSector)
                 return bytesRead;
             else if (!PrepareNextSector()) [[unlikely]]
                 goto eof_fill;
         }
-    }
+
+        const size_t toRead = std::min(DVD_SECTOR_SIZE - m_currentByte, bytes);
+
+        if constexpr (!Skip)
+            memcpy(dataPtr + bytesRead, m_sectorBuff + m_currentByte, toRead);
+
+        bytes         -= toRead;
+        bytesRead     += toRead;
+        m_currentByte += toRead;
+
+    } while (bytes > 0);
 
     return bytesRead;
 
 eof_fill:
-    if (dataPtr != nullptr && bytes > 0) [[unlikely]]
+    if constexpr (!Skip)
         memset(dataPtr + bytesRead, 0, bytes);
 
     return bytesRead;
@@ -82,13 +74,13 @@ eof_fill:
 template <bool singleSector>
 size_t IsoReader::ReadBytes(void *ptr, size_t bytes)
 {
-    return ReadBytesImpl<singleSector>(ptr, bytes);
+    return ReadBytesImpl<singleSector, false>(ptr, bytes);
 }
 
 template <bool singleSector>
 size_t IsoReader::SkipBytes(size_t bytes)
 {
-    return ReadBytesImpl<singleSector>(nullptr, bytes);
+    return ReadBytesImpl<singleSector, true>(nullptr, bytes);
 }
 
 bool IsoReader::PrepareNextSector()
@@ -109,7 +101,10 @@ bool IsoReader::SeekToSector(const uint32_t sector)
 
     if (SeekFile(m_filePtr.get(), DVD_SECTOR_SIZE * static_cast<int64_t>(sector), SEEK_SET) != 0 ||
         fread(m_sectorBuff, DVD_SECTOR_SIZE, 1, m_filePtr.get()) != 1) [[unlikely]]
+    {
+        m_currentByte = DVD_SECTOR_SIZE;
         return false;
+    }
 
     m_currentByte   = 0;
     m_currentSector = sector;

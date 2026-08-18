@@ -51,7 +51,7 @@ namespace dvd
     private:
         bool PrepareNextSector();
 
-        template <bool singleSector>
+        template <bool singleSector, bool Skip>
         size_t ReadBytesImpl(void *ptr, size_t bytes);
     };
 
