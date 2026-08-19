@@ -20,7 +20,7 @@
 <iso_project image_name="myimage.iso" serial="ABCD-12345" region="japan">
 
     <!-- <identifiers>
-        Optional, Specifies the identifier strings.
+        Optional, Specifies the identifier strings (max 32 ASCII characters per attribute).
 
         In order for the resulting image to be bootable to a PS2, the system and application identifiers must
         read PLAYSTATION. If for some reason you wanted to keep them blank, specify a blank system and
@@ -72,7 +72,7 @@
                 Specifies a file in the directory tree.
 
                 Attributes:
-                    name    - Name for the file (max 31 characters including extension).
+                    name    - Name for the file (max 31 ASCII characters including extension).
                     source  - Optional, path to the source file (can be a relative or absolute).
                     date    - Optional, custom file timestamp. Format is YYYYMMDDHHMMSS.
                     offs    - Optional, custom forced LBA for files.
@@ -87,17 +87,17 @@
                 and uses that as the name of the file. Omitting both will cause an error obviously.
             -->
             <!-- Stores system.txt as system.cnf -->
-            <file name="system.cnf" source="../system.txt"/>
+            <file name="system.cnf" source="../system.txt"/> <!-- Note: BOOT2 filename MUST be [A-Z0-9_], otherwise it won't boot! -->
 
             <!-- File path is inferred from <directory_tree> source -->
-            <file name="myexec.elf"/>
+            <file name="abcd_123.45"/>
 
             <!-- <dir>
                 Specifies a subdirectory to the directory structure. <file> and <dir> elements inside
                 the element will be stored inside it.
 
                 Attributes:
-                    name    - Name for the directory (max 31 characters).
+                    name    - Name for the directory (max 31 ASCII characters).
                     source  - Optional, path to the source directory (can be a relative or absolute).
                     date    - Optional, custom file timestamp. Format is YYYYMMDDHHMMSS.
                     offs    - Optional, custom forced LBA for directories.
@@ -138,7 +138,7 @@
         <!-- All elements here will be inside this layer -->
         <directory_tree source="myproject">
             <file name="system.cnf" source="../system.txt"/>
-            <file name="myexec.elf"/>
+            <file name="abcd_123.45"/>
             <dir name="mydir">
                 <file name="myfile.dat"/>
             </dir>
