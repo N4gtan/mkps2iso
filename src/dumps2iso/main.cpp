@@ -453,7 +453,8 @@ int Main(int argc, char *argv[])
         "Usage: dumps2iso [options] <input>\n\n"
         "  <input>\t\tAny 2048-sector disc image to extract, or a directory to generate an XML project.\n\n"
         "Options:\n"
-        "  -h|--help\t\tShows this help text\n"
+        "  -h|--help\t\tPrint usage information and exit\n"
+        "  -V|--version\t\tPrint version number and exit\n"
         "  -q|--quiet\t\tQuiet mode (suppress all but warnings and errors)\n"
         "  -w|--warns\t\tSuppress all warnings (can be used along with -q)\n"
         "  -o <path>\t\tOptional destination directory for extracted files (defaults to working dir)\n"
@@ -468,11 +469,10 @@ int Main(int argc, char *argv[])
 
     constexpr const char *VERSION_TEXT =
         "DUMPS2ISO " VERSION " - PlayStation 2 Image Dumper\n"
-        "Get the latest version at https://github.com/N4gtan/mkps2iso\n\n";
+        "Get the latest version at https://github.com/N4gtan/mkps2iso\n";
 
     if (argc == 1)
     {
-        printf(VERSION_TEXT);
         printf(HELP_TEXT);
         return EXIT_SUCCESS;
     }
@@ -484,8 +484,12 @@ int Main(int argc, char *argv[])
         {
             if (ParseArgument(args, "h", "help"))
             {
-                printf(VERSION_TEXT);
                 printf(HELP_TEXT);
+                return EXIT_SUCCESS;
+            }
+            if (ParseArgument(args, "V", "version"))
+            {
+                printf(VERSION_TEXT);
                 return EXIT_SUCCESS;
             }
             if (ParseArgument(args, "f", "force"))
@@ -570,9 +574,6 @@ int Main(int argc, char *argv[])
     // PowerShell tab-completion adds a trailing slash to directories, breaking fs::path::stem. Idk who thought this was a good idea...
     if (!param::isoFile.has_filename() && param::isoFile.has_parent_path())
         param::isoFile = param::isoFile.parent_path();
-
-    if (!param::quietMode)
-        printf(VERSION_TEXT);
 
     if (param::outPath.empty())
         param::outPath = param::isoFile.stem();

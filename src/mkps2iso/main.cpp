@@ -280,7 +280,8 @@ int Main(int argc, char *argv[])
         "Usage: mkps2iso [options] <input>\n\n"
         "  <input>\t\tAny XML project file defining the disc layout to build.\n\n"
         "Options:\n"
-        "  -h|--help\t\tShows this help text\n"
+        "  -h|--help\t\tPrint usage information and exit\n"
+        "  -V|--version\t\tPrint version number and exit\n"
         "  -q|--quiet\t\tQuiet mode (suppress all but warnings and errors)\n"
         "  -w|--warns\t\tSuppress all warnings (can be used along with -q)\n"
         "  -m|--master-disc\tGenerates Master Disc sectors data\n"
@@ -294,11 +295,10 @@ int Main(int argc, char *argv[])
 
     constexpr const char *VERSION_TEXT =
         "MKPS2ISO " VERSION " - PlayStation 2 Image Maker\n"
-        "Get the latest version at https://github.com/N4gtan/mkps2iso\n\n";
+        "Get the latest version at https://github.com/N4gtan/mkps2iso\n";
 
     if (argc == 1)
     {
-        printf(VERSION_TEXT);
         printf(HELP_TEXT);
         return EXIT_SUCCESS;
     }
@@ -312,8 +312,12 @@ int Main(int argc, char *argv[])
         {
             if (ParseArgument(args, "h", "help"))
             {
-                printf(VERSION_TEXT);
                 printf(HELP_TEXT);
+                return EXIT_SUCCESS;
+            }
+            if (ParseArgument(args, "V", "version"))
+            {
+                printf(VERSION_TEXT);
                 return EXIT_SUCCESS;
             }
             if (ParseArgument(args, "q", "quiet"))
@@ -401,9 +405,6 @@ int Main(int argc, char *argv[])
         printf("No XML script specified.\n");
         return EXIT_FAILURE;
     }
-
-    if (!param::quietMode)
-        printf(VERSION_TEXT);
 
     if (param::lbaFile == "-l" || param::lbaFile == "--lba")
         param::lbaFile = param::xmlFile.stem() += "_LBA.txt";
